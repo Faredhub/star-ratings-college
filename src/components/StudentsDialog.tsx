@@ -1,0 +1,391 @@
+import { useState, useEffect } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Textarea } from "@/components/ui/textarea";
+import { Card } from "@/components/ui/card";
+import { Loader2, Send, MessageSquare, X, Filter, Trash2 } from "lucide-react";
+import { toast } from "sonner";
+
+interface Student {
+  id: string;
+  full_name: string;
+  registration_number: string;
+  year: number;
+  semester: number;
+  section: string;
+  branch: string;
+  phone_number: string | null;
+  created_at: string;
+}
+
+interface Message {
+  id: string;
+  message: string;
+  created_at: string;
+  read_at: string | null;
+}
+
+export function StudentsDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (open: boolean) => void }) {
+  const [loading, setLoading] = useState(true);
+  const [students, setStudents] = useState<Student[]>([]);
+  const [filteredStudents, setFilteredStudents] = useState<Student[]>([]);
+  const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
+  const [messageText, setMessageText] = useState("");
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [sendingMessage, setSendingMessage] = useState(false);
+  
+  // Filter states
+  const [filters, setFilters] = useState({
+    semester: "all",
+    section: "all",
+    branch: "all"
+  });
+  const [availableSemesters, setAvailableSemesters] = useState<number[]>([]);
+  const [availableSections, setAvailableSections] = useState<string[]>([]);
+  const [availableBranches, setAvailableBranches] = useState<string[]>([]);
+
+  useEffect(() => {
+    if (open) {
+      loadStudents();
+    }
+  }, [open]);
+
+  useEffect(() => {
+    // Apply filters
+    let filtered = [...students];
+    
+    if (filters.semester && filters.semester !== "all") {
+      filtered = filtered.filter(s => s.semester === parseInt(filters.semester));
+    }
+    if (filters.section && filters.section !== "all") {
+      filtered = filtered.filter(s => s.section === filters.section);
+    }
+    if (filters.branch && filters.branch !== "all") {
+      filtered = filtered.filter(s => s.branch === filters.branch);
+    }
+    
+    setFilteredStudents(filtered);
+  }, [filters, students]);
+
+  useEffect(() => {
+    if (!open) return;
+
+    // Set up realtime subscription for new students
+    const channel = supabase
+      .channel('students-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'profiles'
+        },
+        () => {
+          loadStudents();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [open]);
+
+  const loadStudents = async () => {
+    setLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("*")
+        .order("created_at", { ascending: false });
+
+      if (error) throw error;
+      
+      setStudents(data || []);
+      setFilteredStudents(data || []);
+
+      // Extract unique filter values
+      if (data) {
+        const semesters = [...new Set(data.map(s => s.semester))].sort((a, b) => a - b);
+        const sections = [...new Set(data.map(s => s.section))].sort();
+        const branches = [...new Set(data.map(s => s.branch))].sort();
+        
+        setAvailableSemesters(semesters);
+        setAvailableSections(sections);
+        setAvailableBranches(branches);
+      }
+    } catch (error: any) {
+      console.error("Error loading students:", error);
+      toast.error("Failed to load students");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadMessages = async (studentId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from("messages")
+        .select("*")
+        .eq("student_id", studentId)
+        .order("created_at", { ascending: false });
+
+      if (error) throw error;
+      setMessages(data || []);
+    } catch (error: any) {
+      console.error("Error loading messages:", error);
+      toast.error("Failed to load messages");
+    }
+  };
+
+  const handleSelectStudent = (student: Student) => {
+    setSelectedStudent(student);
+    loadMessages(student.id);
+  };
+
+  const handleSendMessage = async () => {
+    if (!messageText.trim() || !selectedStudent) return;
+
+    setSendingMessage(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Not authenticated");
+
+      const { error } = await supabase
+        .from("messages")
+        .insert({
+          admin_id: user.id,
+          student_id: selectedStudent.id,
+          message: messageText
+        });
+
+      if (error) throw error;
+
+      toast.success("Message sent successfully!");
+      setMessageText("");
+      loadMessages(selectedStudent.id);
+    } catch (error: any) {
+      console.error("Error sending message:", error);
+      toast.error("Failed to send message");
+    } finally {
+      setSendingMessage(false);
+    }
+  };
+
+  const clearFilters = () => {
+    setFilters({ semester: "all", section: "all", branch: "all" });
+  };
+
+  const handleDeleteStudent = async (studentId: string) => {
+    if (!confirm("Are you sure you want to delete this student? This will also delete all their ratings and messages.")) {
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from("profiles")
+        .delete()
+        .eq("id", studentId);
+
+      if (error) throw error;
+      toast.success("Student deleted successfully");
+      loadStudents();
+    } catch (error: any) {
+      console.error("Error deleting student:", error);
+      toast.error("Failed to delete student");
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-7xl max-h-[90vh] overflow-hidden flex flex-col">
+        <DialogHeader>
+          <DialogTitle className="text-2xl gradient-text">Student Management</DialogTitle>
+        </DialogHeader>
+
+        <div className="flex-1 overflow-hidden flex gap-4">
+          {/* Students List */}
+          <div className="flex-1 flex flex-col overflow-hidden">
+            {/* Filters */}
+            <Card className="p-4 mb-4">
+              <div className="flex items-center gap-2 mb-3">
+                <Filter className="h-4 w-4" />
+                <h3 className="font-semibold">Filters</h3>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={clearFilters}
+                  className="ml-auto"
+                >
+                  Clear
+                </Button>
+              </div>
+              <div className="grid grid-cols-3 gap-3">
+                <div>
+                  <Label className="text-xs">Semester</Label>
+                  <Select value={filters.semester} onValueChange={(value) => setFilters({ ...filters, semester: value })}>
+                    <SelectTrigger className="h-8">
+                      <SelectValue placeholder="All" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Semesters</SelectItem>
+                      {availableSemesters.map(sem => (
+                        <SelectItem key={sem} value={sem.toString()}>Semester {sem}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label className="text-xs">Section</Label>
+                  <Select value={filters.section} onValueChange={(value) => setFilters({ ...filters, section: value })}>
+                    <SelectTrigger className="h-8">
+                      <SelectValue placeholder="All" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Sections</SelectItem>
+                      {availableSections.map(sec => (
+                        <SelectItem key={sec} value={sec}>Section {sec}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label className="text-xs">Branch</Label>
+                  <Select value={filters.branch} onValueChange={(value) => setFilters({ ...filters, branch: value })}>
+                    <SelectTrigger className="h-8">
+                      <SelectValue placeholder="All" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Branches</SelectItem>
+                      {availableBranches.map(branch => (
+                        <SelectItem key={branch} value={branch}>{branch}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            </Card>
+
+            {loading ? (
+              <div className="flex items-center justify-center h-64">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+              </div>
+            ) : (
+              <div className="overflow-auto flex-1 border rounded-lg">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Name</TableHead>
+                      <TableHead>Reg. No.</TableHead>
+                      <TableHead>Branch</TableHead>
+                      <TableHead>Year/Sem</TableHead>
+                      <TableHead>Section</TableHead>
+                      <TableHead>Phone</TableHead>
+                      <TableHead>Action</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredStudents.map((student) => (
+                      <TableRow 
+                        key={student.id}
+                        className={selectedStudent?.id === student.id ? "bg-muted" : ""}
+                      >
+                        <TableCell className="font-medium">{student.full_name}</TableCell>
+                        <TableCell>{student.registration_number}</TableCell>
+                        <TableCell>{student.branch}</TableCell>
+                        <TableCell>Y{student.year}/S{student.semester}</TableCell>
+                        <TableCell>{student.section}</TableCell>
+                        <TableCell>{student.phone_number || "N/A"}</TableCell>
+                        <TableCell>
+                          <div className="flex gap-2">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleSelectStudent(student)}
+                            >
+                              <MessageSquare className="h-4 w-4 mr-1" />
+                              Message
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="destructive"
+                              onClick={() => handleDeleteStudent(student.id)}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
+            <div className="mt-2 text-sm text-muted-foreground">
+              Showing {filteredStudents.length} of {students.length} students
+            </div>
+          </div>
+
+          {/* Message Panel */}
+          {selectedStudent && (
+            <Card className="w-96 flex flex-col">
+              <div className="p-4 border-b flex justify-between items-start">
+                <div>
+                  <h3 className="font-semibold">{selectedStudent.full_name}</h3>
+                  <p className="text-sm text-muted-foreground">{selectedStudent.registration_number}</p>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setSelectedStudent(null)}
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+
+              <div className="flex-1 overflow-auto p-4 space-y-3">
+                {messages.length === 0 ? (
+                  <p className="text-center text-muted-foreground text-sm">No messages yet</p>
+                ) : (
+                  messages.map((msg) => (
+                    <div key={msg.id} className="bg-muted p-3 rounded-lg">
+                      <p className="text-sm">{msg.message}</p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        {new Date(msg.created_at).toLocaleString()}
+                      </p>
+                    </div>
+                  ))
+                )}
+              </div>
+
+              <div className="p-4 border-t space-y-2">
+                <Textarea
+                  placeholder="Type your message..."
+                  value={messageText}
+                  onChange={(e) => setMessageText(e.target.value)}
+                  rows={3}
+                />
+                <Button
+                  onClick={handleSendMessage}
+                  disabled={sendingMessage || !messageText.trim()}
+                  className="w-full"
+                >
+                  {sendingMessage ? (
+                    <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Sending...</>
+                  ) : (
+                    <><Send className="mr-2 h-4 w-4" /> Send Message</>
+                  )}
+                </Button>
+              </div>
+            </Card>
+          )}
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
