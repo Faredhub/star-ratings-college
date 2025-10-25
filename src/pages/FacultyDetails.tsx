@@ -27,6 +27,11 @@ interface RatingData {
   teaching_aids: number;
   feedback_message: string;
   created_at: string;
+  student_id: string;
+  profiles?: {
+    full_name: string;
+    registration_number: string;
+  };
 }
 
 export default function FacultyDetails() {
@@ -53,10 +58,10 @@ export default function FacultyDetails() {
       if (facultyError) throw facultyError;
       setFaculty(facultyData);
 
-      // Load ratings
+      // Load ratings with student profile information
       const { data: ratingsData, error: ratingsError } = await supabase
         .from("ratings")
-        .select("*")
+        .select("*, profiles(full_name, registration_number)")
         .eq("faculty_id", facultyId);
 
       if (ratingsError) throw ratingsError;
@@ -258,11 +263,21 @@ export default function FacultyDetails() {
             {ratings.filter(r => r.feedback_message).length > 0 ? (
               <div className="space-y-4">
                 {ratings.filter(r => r.feedback_message).slice(0, 5).map((rating, idx) => (
-                  <div key={idx} className="p-4 bg-muted/50 rounded-lg">
-                    <p className="text-sm">{rating.feedback_message}</p>
-                    <p className="text-xs text-muted-foreground mt-2">
-                      {new Date(rating.created_at).toLocaleDateString()}
-                    </p>
+                  <div key={idx} className="p-4 bg-muted/50 rounded-lg border-l-4 border-primary/20">
+                    <div className="flex items-start justify-between mb-2">
+                      <div className="flex flex-col">
+                        <p className="text-sm font-semibold text-primary">
+                          {rating.profiles?.full_name || "Student"}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          Reg. No: {rating.profiles?.registration_number || "N/A"}
+                        </p>
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        {new Date(rating.created_at).toLocaleDateString()}
+                      </p>
+                    </div>
+                    <p className="text-sm mt-2">{rating.feedback_message}</p>
                   </div>
                 ))}
               </div>

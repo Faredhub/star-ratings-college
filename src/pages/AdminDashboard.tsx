@@ -5,11 +5,12 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Shield, LogOut, Loader2, Users, BookOpen, Star, TrendingUp, Eye, Download, Mail, ArrowLeft, Plus, Filter, Trash2, BarChart3, PieChart as PieChartIcon, LineChart as LineChartIcon } from "lucide-react";
+import { Shield, LogOut, Loader2, Users, BookOpen, Star, TrendingUp, Eye, Download, Mail, ArrowLeft, Plus, Filter, Trash2, Edit, BarChart3, PieChart as PieChartIcon, LineChart as LineChartIcon } from "lucide-react";
 import { toast } from "sonner";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line, Legend } from "recharts";
 import { AddFacultyDialog } from "@/components/AddFacultyDialog";
+import { EditFacultyDialog } from "@/components/EditFacultyDialog";
 import { StudentsDialog } from "@/components/StudentsDialog";
 
 interface FacultyWithRatings {
@@ -41,6 +42,8 @@ export default function AdminDashboard() {
     subject: "all"
   });
   const [showAddDialog, setShowAddDialog] = useState(false);
+  const [showEditDialog, setShowEditDialog] = useState(false);
+  const [selectedFaculty, setSelectedFaculty] = useState<FacultyWithRatings | null>(null);
   const [showStudentsDialog, setShowStudentsDialog] = useState(false);
   const [availableSemesters, setAvailableSemesters] = useState<string[]>([]);
   const [availableSections, setAvailableSections] = useState<string[]>([]);
@@ -613,6 +616,17 @@ export default function AdminDashboard() {
                         <Button
                           variant="outline"
                           size="sm"
+                          onClick={() => {
+                            setSelectedFaculty(f);
+                            setShowEditDialog(true);
+                          }}
+                        >
+                          <Edit className="h-4 w-4 mr-1" />
+                          Edit
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
                           onClick={() => handleSendEmail(f)}
                         >
                           <Mail className="h-4 w-4 mr-1" />
@@ -641,6 +655,20 @@ export default function AdminDashboard() {
         onOpenChange={setShowAddDialog}
         onSuccess={loadDashboardData}
       />
+      {selectedFaculty && (
+        <EditFacultyDialog 
+          open={showEditDialog} 
+          onOpenChange={setShowEditDialog}
+          onSuccess={loadDashboardData}
+          facultyId={selectedFaculty.id}
+          facultyData={{
+            name: selectedFaculty.name,
+            email: selectedFaculty.email,
+            department: selectedFaculty.department,
+            designation: selectedFaculty.designation
+          }}
+        />
+      )}
       <StudentsDialog 
         open={showStudentsDialog}
         onOpenChange={setShowStudentsDialog}
