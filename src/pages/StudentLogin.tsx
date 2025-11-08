@@ -21,27 +21,7 @@ export default function StudentLogin() {
     setLoading(true);
 
     try {
-      // Verify registration number matches the email pattern
-      const expectedEmail = `${registrationNumber}@student.edu`;
-      if (email !== expectedEmail) {
-        toast.error("Email must be in format: registrationnumber@student.edu");
-        setLoading(false);
-        return;
-      }
-
-      // Verify registration number exists in profiles
-      const { data: profileData, error: profileError } = await supabase
-        .from("profiles")
-        .select("id")
-        .eq("registration_number", registrationNumber)
-        .single();
-
-      if (profileError || !profileData) {
-        toast.error("Invalid registration number");
-        setLoading(false);
-        return;
-      }
-
+      // Sign in with email and password
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password
@@ -50,6 +30,27 @@ export default function StudentLogin() {
       if (error) throw error;
 
       if (data.user) {
+        // Verify registration number matches the user's profile
+        const { data: profileData, error: profileError } = await supabase
+          .from("profiles")
+          .select("registration_number")
+          .eq("id", data.user.id)
+          .single();
+
+        if (profileError || !profileData) {
+          await supabase.auth.signOut();
+          toast.error("Profile not found");
+          setLoading(false);
+          return;
+        }
+
+        if (profileData.registration_number !== registrationNumber) {
+          await supabase.auth.signOut();
+          toast.error("Invalid registration number");
+          setLoading(false);
+          return;
+        }
+
         // Check if user is admin
         const { data: roleData } = await supabase
           .from("user_roles")
@@ -104,7 +105,7 @@ export default function StudentLogin() {
             <Input
               id="email"
               type="email"
-              placeholder="registrationnumber@student.edu"
+              placeholder="Enter your email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
