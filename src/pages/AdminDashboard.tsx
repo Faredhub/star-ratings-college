@@ -5,13 +5,17 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Shield, LogOut, Loader2, Users, BookOpen, Star, TrendingUp, Eye, Download, Mail, ArrowLeft, Plus, Filter, Trash2, Edit, BarChart3, PieChart as PieChartIcon, LineChart as LineChartIcon } from "lucide-react";
+import { Shield, LogOut, Loader2, Users, BookOpen, Star, TrendingUp, Eye, Download, Mail, ArrowLeft, Plus, Filter, Trash2, Edit, BarChart3, PieChart as PieChartIcon, LineChart as LineChartIcon, UserPlus, FileSpreadsheet } from "lucide-react";
 import { toast } from "sonner";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line, Legend } from "recharts";
 import { AddFacultyDialog } from "@/components/AddFacultyDialog";
 import { EditFacultyDialog } from "@/components/EditFacultyDialog";
 import { StudentsDialog } from "@/components/StudentsDialog";
+import { AddStudentDialog } from "@/components/AddStudentDialog";
+import * as XLSX from 'xlsx';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 interface FacultyWithRatings {
   id: string;
@@ -45,6 +49,7 @@ export default function AdminDashboard() {
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [selectedFaculty, setSelectedFaculty] = useState<FacultyWithRatings | null>(null);
   const [showStudentsDialog, setShowStudentsDialog] = useState(false);
+  const [showAddStudentDialog, setShowAddStudentDialog] = useState(false);
   const [availableSemesters, setAvailableSemesters] = useState<string[]>([]);
   const [availableSections, setAvailableSections] = useState<string[]>([]);
   const [availableSubjects, setAvailableSubjects] = useState<string[]>([]);
@@ -187,25 +192,88 @@ export default function AdminDashboard() {
     navigate("/admin-login");
   };
 
-  const handleExportData = () => {
-    const csvContent = [
-      ["Faculty Name", "Department", "Assignments", "Total Ratings", "Average Rating"],
-      ...faculty.map(f => [
+  const handleExportExcel = async () => {
+    try {
+      // Prepare faculty data
+      const facultyData = faculty.map(f => ({
+        "Faculty Name": f.name,
+        "Email": f.email,
+        "Department": f.department,
+        "Designation": f.designation || "N/A",
+        "Assignments": f.assignmentCount,
+        "Total Ratings": f.ratingCount,
+        "Average Rating": f.averageRating.toFixed(2)
+      }));
+
+      // Fetch ratings data
+      const { data: ratingsData } = await supabase
+        .from("ratings")
+        .select("*, profiles(full_name, registration_number)");
+
+      const ratingsExport = ratingsData?.map(r => ({
+        "Student Name": r.profiles?.full_name || "N/A",
+        "Registration Number": r.profiles?.registration_number || "N/A",
+        "Engagement": r.engagement_level,
+        "Concept Understanding": r.concept_understanding,
+        "Content Depth": r.content_depth,
+        "Application Teaching": r.application_teaching,
+        "Pedagogy Tools": r.pedagogy_tools,
+        "Communication Skills": r.communication_skills,
+        "Class Decorum": r.class_decorum,
+        "Teaching Aids": r.teaching_aids,
+        "Feedback": r.feedback_message || "N/A",
+        "Date": new Date(r.created_at).toLocaleDateString()
+      })) || [];
+
+      // Create workbook
+      const wb = XLSX.utils.book_new();
+      const ws1 = XLSX.utils.json_to_sheet(facultyData);
+      const ws2 = XLSX.utils.json_to_sheet(ratingsExport);
+      
+      XLSX.utils.book_append_sheet(wb, ws1, "Faculty Summary");
+      XLSX.utils.book_append_sheet(wb, ws2, "Student Ratings");
+      
+      XLSX.writeFile(wb, "faculty-performance-report.xlsx");
+      toast.success("Excel report exported successfully!");
+    } catch (error: any) {
+      console.error("Error exporting Excel:", error);
+      toast.error("Failed to export Excel report");
+    }
+  };
+
+  const handleExportPDF = async () => {
+    try {
+      const doc = new jsPDF();
+      
+      // Title
+      doc.setFontSize(18);
+      doc.text("Faculty Performance Report", 14, 20);
+      doc.setFontSize(11);
+      doc.text(`Generated on: ${new Date().toLocaleDateString()}`, 14, 28);
+      
+      // Faculty summary table
+      const facultyTableData = faculty.map(f => [
         f.name,
         f.department,
         f.assignmentCount.toString(),
         f.ratingCount.toString(),
         f.averageRating.toFixed(2)
-      ])
-    ].map(row => row.join(",")).join("\n");
+      ]);
 
-    const blob = new Blob([csvContent], { type: "text/csv" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "faculty-performance-report.csv";
-    a.click();
-    toast.success("Data exported successfully!");
+      autoTable(doc, {
+        head: [["Faculty Name", "Department", "Assignments", "Ratings", "Avg Rating"]],
+        body: facultyTableData,
+        startY: 35,
+        theme: 'grid',
+        styles: { fontSize: 9 }
+      });
+
+      doc.save("faculty-performance-report.pdf");
+      toast.success("PDF report exported successfully!");
+    } catch (error: any) {
+      console.error("Error exporting PDF:", error);
+      toast.error("Failed to export PDF report");
+    }
   };
 
   const handleSendEmail = async (facultyMember: FacultyWithRatings) => {
@@ -318,9 +386,17 @@ export default function AdminDashboard() {
                 <Plus className="mr-2 h-4 w-4" />
                 Add Faculty
               </Button>
-              <Button onClick={handleExportData} variant="outline">
+              <Button onClick={() => setShowAddStudentDialog(true)} variant="default">
+                <UserPlus className="mr-2 h-4 w-4" />
+                Add Student
+              </Button>
+              <Button onClick={handleExportExcel} variant="outline">
+                <FileSpreadsheet className="mr-2 h-4 w-4" />
+                Export Excel
+              </Button>
+              <Button onClick={handleExportPDF} variant="outline">
                 <Download className="mr-2 h-4 w-4" />
-                Export Data
+                Export PDF
               </Button>
               <ThemeToggle />
               <Button onClick={handleLogout} variant="outline">
@@ -672,6 +748,11 @@ export default function AdminDashboard() {
       <StudentsDialog 
         open={showStudentsDialog}
         onOpenChange={setShowStudentsDialog}
+      />
+      <AddStudentDialog 
+        open={showAddStudentDialog}
+        onOpenChange={setShowAddStudentDialog}
+        onSuccess={loadDashboardData}
       />
     </div>
   );
