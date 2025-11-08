@@ -3,6 +3,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
@@ -22,35 +23,64 @@ interface EditFacultyDialogProps {
 
 export function EditFacultyDialog({ open, onOpenChange, onSuccess, facultyId, facultyData }: EditFacultyDialogProps) {
   const [loading, setLoading] = useState(false);
+  const [assignmentId, setAssignmentId] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     name: "",
     email: "",
     department: "",
-    designation: ""
+    designation: "",
+    semester: "",
+    section: "",
+    subject: "",
+    year: "",
+    branch: ""
   });
 
   useEffect(() => {
-    if (facultyData) {
-      setFormData({
-        name: facultyData.name,
-        email: facultyData.email,
-        department: facultyData.department,
-        designation: facultyData.designation
-      });
-    }
-  }, [facultyData]);
+    const loadFacultyData = async () => {
+      if (facultyData && facultyId) {
+        // Load faculty assignment data
+        const { data: assignmentData, error } = await supabase
+          .from("faculty_assignments")
+          .select("*")
+          .eq("faculty_id", facultyId)
+          .single();
+
+        if (error) {
+          console.error("Error loading assignment:", error);
+        } else if (assignmentData) {
+          setAssignmentId(assignmentData.id);
+          setFormData({
+            name: facultyData.name,
+            email: facultyData.email,
+            department: facultyData.department,
+            designation: facultyData.designation,
+            branch: assignmentData.branch,
+            year: assignmentData.year.toString(),
+            semester: assignmentData.semester.toString(),
+            section: assignmentData.section,
+            subject: assignmentData.subject
+          });
+        }
+      }
+    };
+
+    loadFacultyData();
+  }, [facultyData, facultyId]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!formData.name || !formData.email || !formData.department || !formData.designation) {
+    if (!formData.name || !formData.email || !formData.department || !formData.designation ||
+        !formData.semester || !formData.section || !formData.subject || !formData.year || !formData.branch) {
       toast.error("Please fill in all required fields");
       return;
     }
 
     setLoading(true);
     try {
-      const { error } = await supabase
+      // Update faculty details
+      const { error: facultyError } = await supabase
         .from("faculty")
         .update({
           name: formData.name,
@@ -60,7 +90,23 @@ export function EditFacultyDialog({ open, onOpenChange, onSuccess, facultyId, fa
         })
         .eq("id", facultyId);
 
-      if (error) throw error;
+      if (facultyError) throw facultyError;
+
+      // Update faculty assignment
+      if (assignmentId) {
+        const { error: assignmentError } = await supabase
+          .from("faculty_assignments")
+          .update({
+            subject: formData.subject,
+            year: parseInt(formData.year),
+            semester: parseInt(formData.semester),
+            section: formData.section,
+            branch: formData.branch
+          })
+          .eq("id", assignmentId);
+
+        if (assignmentError) throw assignmentError;
+      }
 
       toast.success("Faculty updated successfully!");
       onOpenChange(false);
@@ -125,6 +171,83 @@ export function EditFacultyDialog({ open, onOpenChange, onSuccess, facultyId, fa
               placeholder="Enter position (e.g., Professor, Assistant Professor)"
               value={formData.designation}
               onChange={(e) => setFormData({ ...formData, designation: e.target.value })}
+              required
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="branch">Branch *</Label>
+            <Select value={formData.branch} onValueChange={(value) => setFormData({ ...formData, branch: value })}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select branch" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="Computer Science">Computer Science</SelectItem>
+                <SelectItem value="Information Technology">Information Technology</SelectItem>
+                <SelectItem value="Electronics">Electronics</SelectItem>
+                <SelectItem value="Mechanical">Mechanical</SelectItem>
+                <SelectItem value="Civil">Civil</SelectItem>
+                <SelectItem value="Electrical">Electrical</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="year">Year *</Label>
+            <Select value={formData.year} onValueChange={(value) => setFormData({ ...formData, year: value })}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select year" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="1">1st Year</SelectItem>
+                <SelectItem value="2">2nd Year</SelectItem>
+                <SelectItem value="3">3rd Year</SelectItem>
+                <SelectItem value="4">4th Year</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="semester">Assigned Semester *</Label>
+            <Select value={formData.semester} onValueChange={(value) => setFormData({ ...formData, semester: value })}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select semester" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="1">Semester 1</SelectItem>
+                <SelectItem value="2">Semester 2</SelectItem>
+                <SelectItem value="3">Semester 3</SelectItem>
+                <SelectItem value="4">Semester 4</SelectItem>
+                <SelectItem value="5">Semester 5</SelectItem>
+                <SelectItem value="6">Semester 6</SelectItem>
+                <SelectItem value="7">Semester 7</SelectItem>
+                <SelectItem value="8">Semester 8</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="section">Assigned Section *</Label>
+            <Select value={formData.section} onValueChange={(value) => setFormData({ ...formData, section: value })}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select section" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="A">Section A</SelectItem>
+                <SelectItem value="B">Section B</SelectItem>
+                <SelectItem value="C">Section C</SelectItem>
+                <SelectItem value="D">Section D</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="subject">Assigned Subject *</Label>
+            <Input
+              id="subject"
+              placeholder="Enter subject name"
+              value={formData.subject}
+              onChange={(e) => setFormData({ ...formData, subject: e.target.value })}
               required
             />
           </div>
