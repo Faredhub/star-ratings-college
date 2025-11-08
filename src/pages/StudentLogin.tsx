@@ -14,12 +14,34 @@ export default function StudentLogin() {
   const [loading, setLoading] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [registrationNumber, setRegistrationNumber] = useState("");
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
 
     try {
+      // Verify registration number matches the email pattern
+      const expectedEmail = `${registrationNumber}@student.edu`;
+      if (email !== expectedEmail) {
+        toast.error("Email must be in format: registrationnumber@student.edu");
+        setLoading(false);
+        return;
+      }
+
+      // Verify registration number exists in profiles
+      const { data: profileData, error: profileError } = await supabase
+        .from("profiles")
+        .select("id")
+        .eq("registration_number", registrationNumber)
+        .single();
+
+      if (profileError || !profileData) {
+        toast.error("Invalid registration number");
+        setLoading(false);
+        return;
+      }
+
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password
@@ -66,11 +88,23 @@ export default function StudentLogin() {
 
         <form onSubmit={handleSubmit} className="space-y-6">
           <div className="space-y-2">
+            <Label htmlFor="registrationNumber">Registration Number</Label>
+            <Input
+              id="registrationNumber"
+              type="text"
+              placeholder="e.g., 2201297001"
+              value={registrationNumber}
+              onChange={(e) => setRegistrationNumber(e.target.value)}
+              required
+            />
+          </div>
+
+          <div className="space-y-2">
             <Label htmlFor="email">Email</Label>
             <Input
               id="email"
               type="email"
-              placeholder="Enter your email"
+              placeholder="registrationnumber@student.edu"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
@@ -104,13 +138,6 @@ export default function StudentLogin() {
               <Shield className="mr-2 h-4 w-4" />
               Admin Login
             </Button>
-
-            <p className="text-center text-sm text-muted-foreground">
-              Don't have an account?{" "}
-              <Link to="/student-register" className="text-primary hover:underline">
-                Register here
-              </Link>
-            </p>
           </div>
         </form>
       </Card>

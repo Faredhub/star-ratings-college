@@ -70,17 +70,9 @@ const Index = () => {
           <Button
             size="lg"
             className="btn-gradient w-full sm:w-auto px-8"
-            onClick={() => navigate("/student-register")}
-          >
-            <GraduationCap className="mr-2 h-5 w-5" />
-            Student Registration
-          </Button>
-          <Button
-            size="lg"
-            variant="outline"
-            className="w-full sm:w-auto px-8"
             onClick={() => navigate("/student-login")}
           >
+            <GraduationCap className="mr-2 h-5 w-5" />
             Student Login
           </Button>
           <Button
@@ -102,8 +94,8 @@ const Index = () => {
               <div>
                 <h3 className="font-semibold text-primary mb-2">For Students</h3>
                 <ol className="list-decimal list-inside space-y-2 text-sm text-muted-foreground">
-                  <li>Register with your academic details</li>
-                  <li>Login to your student dashboard</li>
+                  <li>Login with your credentials</li>
+                  <li>Access your student dashboard</li>
                   <li>Select faculty assigned to your class</li>
                   <li>Rate across 8 teaching criteria</li>
                   <li>Submit optional feedback comments</li>

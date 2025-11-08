@@ -8,7 +8,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
-import { Loader2, Send, MessageSquare, X, Filter, Trash2 } from "lucide-react";
+import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from "@/components/ui/pagination";
+import { Loader2, Send, MessageSquare, X, Filter, Trash2, Search } from "lucide-react";
 import { toast } from "sonner";
 
 interface Student {
@@ -38,6 +39,9 @@ export function StudentsDialog({ open, onOpenChange }: { open: boolean; onOpenCh
   const [messageText, setMessageText] = useState("");
   const [messages, setMessages] = useState<Message[]>([]);
   const [sendingMessage, setSendingMessage] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
   
   // Filter states
   const [filters, setFilters] = useState({
@@ -56,8 +60,18 @@ export function StudentsDialog({ open, onOpenChange }: { open: boolean; onOpenCh
   }, [open]);
 
   useEffect(() => {
-    // Apply filters
+    // Apply filters and search
     let filtered = [...students];
+    
+    // Search filter
+    if (searchQuery) {
+      const query = searchQuery.toLowerCase();
+      filtered = filtered.filter(s => 
+        s.full_name.toLowerCase().includes(query) ||
+        s.registration_number.toLowerCase().includes(query) ||
+        s.branch.toLowerCase().includes(query)
+      );
+    }
     
     if (filters.semester && filters.semester !== "all") {
       filtered = filtered.filter(s => s.semester === parseInt(filters.semester));
@@ -70,7 +84,8 @@ export function StudentsDialog({ open, onOpenChange }: { open: boolean; onOpenCh
     }
     
     setFilteredStudents(filtered);
-  }, [filters, students]);
+    setCurrentPage(1); // Reset to first page when filters change
+  }, [filters, students, searchQuery]);
 
   useEffect(() => {
     if (!open) return;
@@ -201,6 +216,13 @@ export function StudentsDialog({ open, onOpenChange }: { open: boolean; onOpenCh
     }
   };
 
+  // Pagination
+  const totalPages = Math.ceil(filteredStudents.length / itemsPerPage);
+  const paginatedStudents = filteredStudents.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-7xl max-h-[90vh] overflow-hidden flex flex-col">
@@ -211,6 +233,19 @@ export function StudentsDialog({ open, onOpenChange }: { open: boolean; onOpenCh
         <div className="flex-1 overflow-hidden flex gap-4">
           {/* Students List */}
           <div className="flex-1 flex flex-col overflow-hidden">
+            {/* Search Bar */}
+            <div className="mb-4">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search by name, registration number, or branch..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-10"
+                />
+              </div>
+            </div>
+
             {/* Filters */}
             <Card className="p-4 mb-4">
               <div className="flex items-center gap-2 mb-3">
@@ -290,44 +325,97 @@ export function StudentsDialog({ open, onOpenChange }: { open: boolean; onOpenCh
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {filteredStudents.map((student) => (
-                      <TableRow 
-                        key={student.id}
-                        className={selectedStudent?.id === student.id ? "bg-muted" : ""}
-                      >
-                        <TableCell className="font-medium">{student.full_name}</TableCell>
-                        <TableCell>{student.registration_number}</TableCell>
-                        <TableCell>{student.branch}</TableCell>
-                        <TableCell>Y{student.year}/S{student.semester}</TableCell>
-                        <TableCell>{student.section}</TableCell>
-                        <TableCell>{student.phone_number || "N/A"}</TableCell>
-                        <TableCell>
-                          <div className="flex gap-2">
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => handleSelectStudent(student)}
-                            >
-                              <MessageSquare className="h-4 w-4 mr-1" />
-                              Message
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="destructive"
-                              onClick={() => handleDeleteStudent(student.id)}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
+                    {paginatedStudents.length > 0 ? (
+                      paginatedStudents.map((student) => (
+                        <TableRow 
+                          key={student.id}
+                          className={selectedStudent?.id === student.id ? "bg-muted" : ""}
+                        >
+                          <TableCell className="font-medium">{student.full_name}</TableCell>
+                          <TableCell>{student.registration_number}</TableCell>
+                          <TableCell>{student.branch}</TableCell>
+                          <TableCell>Y{student.year}/S{student.semester}</TableCell>
+                          <TableCell>{student.section}</TableCell>
+                          <TableCell>{student.phone_number || "N/A"}</TableCell>
+                          <TableCell>
+                            <div className="flex gap-2">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => handleSelectStudent(student)}
+                              >
+                                <MessageSquare className="h-4 w-4 mr-1" />
+                                Message
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="destructive"
+                                onClick={() => handleDeleteStudent(student.id)}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    ) : (
+                      <TableRow>
+                        <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                          No students found matching your criteria
                         </TableCell>
                       </TableRow>
-                    ))}
+                    )}
                   </TableBody>
                 </Table>
               </div>
             )}
-            <div className="mt-2 text-sm text-muted-foreground">
-              Showing {filteredStudents.length} of {students.length} students
+            <div className="mt-2 flex items-center justify-between">
+              <div className="text-sm text-muted-foreground">
+                Showing {paginatedStudents.length} of {filteredStudents.length} students
+                {filteredStudents.length !== students.length && ` (filtered from ${students.length} total)`}
+              </div>
+              
+              {totalPages > 1 && (
+                <Pagination>
+                  <PaginationContent>
+                    <PaginationItem>
+                      <PaginationPrevious 
+                        onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                        className={currentPage === 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                      />
+                    </PaginationItem>
+                    {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
+                      let page;
+                      if (totalPages <= 5) {
+                        page = i + 1;
+                      } else if (currentPage <= 3) {
+                        page = i + 1;
+                      } else if (currentPage >= totalPages - 2) {
+                        page = totalPages - 4 + i;
+                      } else {
+                        page = currentPage - 2 + i;
+                      }
+                      return (
+                        <PaginationItem key={page}>
+                          <PaginationLink
+                            onClick={() => setCurrentPage(page)}
+                            isActive={currentPage === page}
+                            className="cursor-pointer"
+                          >
+                            {page}
+                          </PaginationLink>
+                        </PaginationItem>
+                      );
+                    })}
+                    <PaginationItem>
+                      <PaginationNext 
+                        onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                        className={currentPage === totalPages ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                      />
+                    </PaginationItem>
+                  </PaginationContent>
+                </Pagination>
+              )}
             </div>
           </div>
 

@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Shield, LogOut, Loader2, Users, BookOpen, Star, TrendingUp, Eye, Download, Mail, ArrowLeft, Plus, Filter, Trash2, Edit, BarChart3, PieChart as PieChartIcon, LineChart as LineChartIcon, UserPlus, FileSpreadsheet } from "lucide-react";
+import { Shield, LogOut, Loader2, Users, BookOpen, Star, TrendingUp, Eye, Download, Mail, ArrowLeft, Plus, Filter, Trash2, Edit, BarChart3, PieChart as PieChartIcon, LineChart as LineChartIcon, UserPlus, FileSpreadsheet, Search } from "lucide-react";
 import { toast } from "sonner";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line, Legend } from "recharts";
@@ -13,6 +13,8 @@ import { AddFacultyDialog } from "@/components/AddFacultyDialog";
 import { EditFacultyDialog } from "@/components/EditFacultyDialog";
 import { StudentsDialog } from "@/components/StudentsDialog";
 import { AddStudentDialog } from "@/components/AddStudentDialog";
+import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from "@/components/ui/pagination";
+import { Input } from "@/components/ui/input";
 import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -53,6 +55,9 @@ export default function AdminDashboard() {
   const [availableSemesters, setAvailableSemesters] = useState<string[]>([]);
   const [availableSections, setAvailableSections] = useState<string[]>([]);
   const [availableSubjects, setAvailableSubjects] = useState<string[]>([]);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
 
   useEffect(() => {
     checkAdminAccess();
@@ -300,9 +305,20 @@ export default function AdminDashboard() {
     }
   };
 
-  // Filter faculty based on selected filters
+  // Filter faculty based on selected filters and search query
   const filteredFaculty = faculty.filter(f => {
     const facultyAssignments = allAssignments.filter(a => a.faculty_id === f.id);
+    
+    // Search filter
+    if (searchQuery) {
+      const query = searchQuery.toLowerCase();
+      const matchesSearch = 
+        f.name.toLowerCase().includes(query) ||
+        f.email.toLowerCase().includes(query) ||
+        f.department.toLowerCase().includes(query) ||
+        (f.designation && f.designation.toLowerCase().includes(query));
+      if (!matchesSearch) return false;
+    }
     
     if (filters.semester !== "all") {
       const hasSemester = facultyAssignments.some(a => a.semester.toString() === filters.semester);
@@ -321,6 +337,13 @@ export default function AdminDashboard() {
     
     return true;
   });
+
+  // Pagination
+  const totalPages = Math.ceil(filteredFaculty.length / itemsPerPage);
+  const paginatedFaculty = filteredFaculty.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
 
   // Prepare chart data
   const facultyPerformanceData = filteredFaculty.slice(0, 4).map(f => ({
@@ -623,15 +646,34 @@ export default function AdminDashboard() {
           </Card>
         </div>
 
-        {/* Faculty Performance Table */}
+        {/* Faculty List */}
         <Card className="p-6 card-elegant">
-          <h2 className="text-xl font-bold mb-4 gradient-text">Faculty Performance Summary</h2>
-          <p className="text-sm text-muted-foreground mb-6">
-            Real-time faculty performance data 
-            {filters.semester !== "all" || filters.section !== "all" || filters.subject !== "all" 
-              ? ` (Filtered: ${filteredFaculty.length} of ${faculty.length} faculty)` 
-              : `(${faculty.length} total faculty)`}
-          </p>
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h2 className="text-2xl font-bold gradient-text mb-2">Faculty Performance Data</h2>
+              <p className="text-sm text-muted-foreground">
+                Real-time faculty performance data 
+                {filters.semester !== "all" || filters.section !== "all" || filters.subject !== "all" 
+                  ? ` (Filtered: ${filteredFaculty.length} of ${faculty.length} faculty)` 
+                  : `(${faculty.length} total faculty)`}
+              </p>
+            </div>
+            
+            <div className="w-72">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search by name, email, department..."
+                  value={searchQuery}
+                  onChange={(e) => {
+                    setSearchQuery(e.target.value);
+                    setCurrentPage(1);
+                  }}
+                  className="pl-10"
+                />
+              </div>
+            </div>
+          </div>
 
           <div className="overflow-x-auto">
             <table className="w-full">
@@ -646,83 +688,123 @@ export default function AdminDashboard() {
                 </tr>
               </thead>
               <tbody>
-                {filteredFaculty.map((f) => (
-                  <tr key={f.id} className="border-b hover:bg-muted/50 transition-colors">
-                    <td className="py-4 px-4">
-                      <div>
-                        <p className="font-semibold">{f.name}</p>
-                        <p className="text-sm text-muted-foreground">{f.designation || f.department}</p>
-                      </div>
-                    </td>
-                    <td className="py-4 px-4">
-                      {f.ratingCount > 0 ? (
-                        <div className="flex items-center gap-2">
-                          <Star className="h-4 w-4 text-yellow-500 fill-yellow-500" />
-                          <span className="font-semibold">{f.averageRating.toFixed(1)}</span>
+                {paginatedFaculty.length > 0 ? (
+                  paginatedFaculty.map((f) => (
+                    <tr key={f.id} className="border-b hover:bg-muted/50 transition-colors">
+                      <td className="py-4 px-4">
+                        <div>
+                          <p className="font-semibold">{f.name}</p>
+                          <p className="text-sm text-muted-foreground">{f.designation || f.department}</p>
                         </div>
-                      ) : (
-                        <span className="text-muted-foreground">No ratings yet</span>
-                      )}
-                    </td>
-                    <td className="py-4 px-4">{f.ratingCount}</td>
-                    <td className="py-4 px-4">{f.assignmentCount} assignments</td>
-                    <td className="py-4 px-4">
-                      <span className={`px-2 py-1 rounded-full text-xs ${
-                        f.ratingCount === 0 
-                          ? "bg-muted text-muted-foreground"
-                          : f.averageRating >= 4 
-                          ? "bg-green-100 text-green-700"
-                          : f.averageRating >= 3 
-                          ? "bg-yellow-100 text-yellow-700"
-                          : "bg-red-100 text-red-700"
-                      }`}>
-                        {f.ratingCount === 0 ? "Not Rated" : f.averageRating >= 4 ? "Excellent" : f.averageRating >= 3 ? "Good" : "Needs Improvement"}
-                      </span>
-                    </td>
-                    <td className="py-4 px-4">
-                      <div className="flex gap-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => navigate(`/admin/faculty/${f.id}`)}
-                        >
-                          <Eye className="h-4 w-4 mr-1" />
-                          Details
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => {
-                            setSelectedFaculty(f);
-                            setShowEditDialog(true);
-                          }}
-                        >
-                          <Edit className="h-4 w-4 mr-1" />
-                          Edit
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleSendEmail(f)}
-                        >
-                          <Mail className="h-4 w-4 mr-1" />
-                          Send Report
-                        </Button>
-                        <Button
-                          variant="destructive"
-                          size="sm"
-                          onClick={() => handleDeleteFaculty(f.id)}
-                        >
-                          <Trash2 className="h-4 w-4 mr-1" />
-                          Delete
-                        </Button>
-                      </div>
+                      </td>
+                      <td className="py-4 px-4">
+                        {f.ratingCount > 0 ? (
+                          <div className="flex items-center gap-2">
+                            <Star className="h-4 w-4 text-yellow-500 fill-yellow-500" />
+                            <span className="font-semibold">{f.averageRating.toFixed(1)}</span>
+                          </div>
+                        ) : (
+                          <span className="text-muted-foreground">No ratings yet</span>
+                        )}
+                      </td>
+                      <td className="py-4 px-4">{f.ratingCount}</td>
+                      <td className="py-4 px-4">{f.assignmentCount} assignments</td>
+                      <td className="py-4 px-4">
+                        <span className={`px-2 py-1 rounded-full text-xs ${
+                          f.ratingCount === 0 
+                            ? "bg-muted text-muted-foreground"
+                            : f.averageRating >= 4 
+                            ? "bg-green-100 text-green-700"
+                            : f.averageRating >= 3 
+                            ? "bg-yellow-100 text-yellow-700"
+                            : "bg-red-100 text-red-700"
+                        }`}>
+                          {f.ratingCount === 0 ? "Not Rated" : f.averageRating >= 4 ? "Excellent" : f.averageRating >= 3 ? "Good" : "Needs Improvement"}
+                        </span>
+                      </td>
+                      <td className="py-4 px-4">
+                        <div className="flex gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => navigate(`/admin/faculty/${f.id}`)}
+                          >
+                            <Eye className="h-4 w-4 mr-1" />
+                            Details
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              setSelectedFaculty(f);
+                              setShowEditDialog(true);
+                            }}
+                          >
+                            <Edit className="h-4 w-4 mr-1" />
+                            Edit
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleSendEmail(f)}
+                          >
+                            <Mail className="h-4 w-4 mr-1" />
+                            Send Report
+                          </Button>
+                          <Button
+                            variant="destructive"
+                            size="sm"
+                            onClick={() => handleDeleteFaculty(f.id)}
+                          >
+                            <Trash2 className="h-4 w-4 mr-1" />
+                            Delete
+                          </Button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan={6} className="py-8 text-center text-muted-foreground">
+                      No faculty found matching your criteria
                     </td>
                   </tr>
-                ))}
+                )}
               </tbody>
             </table>
           </div>
+
+          {totalPages > 1 && (
+            <div className="mt-6">
+              <Pagination>
+                <PaginationContent>
+                  <PaginationItem>
+                    <PaginationPrevious 
+                      onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                      className={currentPage === 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                    />
+                  </PaginationItem>
+                  {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                    <PaginationItem key={page}>
+                      <PaginationLink
+                        onClick={() => setCurrentPage(page)}
+                        isActive={currentPage === page}
+                        className="cursor-pointer"
+                      >
+                        {page}
+                      </PaginationLink>
+                    </PaginationItem>
+                  ))}
+                  <PaginationItem>
+                    <PaginationNext 
+                      onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                      className={currentPage === totalPages ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                    />
+                  </PaginationItem>
+                </PaginationContent>
+              </Pagination>
+            </div>
+          )}
         </Card>
       </main>
 
