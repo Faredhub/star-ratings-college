@@ -142,22 +142,28 @@ export function AddStudentDialog({ open, onOpenChange, onSuccess }: AddStudentDi
           const email = getField(['email', 'mail', 'e-mail', 'emailid']);
           const password = getField(['password', 'pass', 'pwd']);
           const fullName = getField(['fullname', 'full_name', 'name', 'studentname', 'student']);
-          const registrationNumber = getField(['registration', 'regno', 'reg', 'registrationnumber', 'regnumber']);
-          const branch = getField(['branch', 'department', 'dept', 'stream']);
-          const year = getField(['year', 'yr', 'class']);
-          const semester = getField(['semester', 'sem']);
+          const registrationNumber = getField(['registration', 'regno', 'reg', 'registrationnumber', 'regnumber', 'regstitionno']);
+          const branch = getField(['branch', 'department', 'dept', 'stream']) || 'CSE'; // Default branch if missing
+          const yearRaw = getField(['year', 'yr', 'class']);
+          const semesterRaw = getField(['semester', 'sem', 'semestar']);
           const section = getField(['section', 'sec', 'div']);
-          const phoneNumber = getField(['phone', 'mobile', 'contact', 'phonenumber', 'mobilenumber']);
+          const phoneNumber = getField(['phone', 'mobile', 'contact', 'phonenumber', 'mobilenumber', 'phoneno']);
+          
+          // Parse year from text like "2nd" -> 2
+          const year = yearRaw ? parseInt(String(yearRaw).replace(/\D/g, '')) : null;
+          
+          // Parse semester from text like "3rd" -> 3
+          const semester = semesterRaw ? parseInt(String(semesterRaw).replace(/\D/g, '')) : null;
           
           if (!email || !password) {
             failedCount++;
-            errors.push(`Row ${failedCount + successCount}: Missing email or password`);
+            errors.push(`Row ${failedCount + successCount}: Missing email or password (found: ${email ? 'email' : 'no email'}, ${password ? 'password' : 'no password'})`);
             continue;
           }
 
-          if (!fullName || !registrationNumber || !branch || !year || !semester || !section) {
+          if (!fullName || !registrationNumber || !year || !semester || !section) {
             failedCount++;
-            errors.push(`Row ${failedCount + successCount}: Missing required fields (name, registration number, branch, year, semester, or section)`);
+            errors.push(`Row ${failedCount + successCount}: Missing required fields (found: name=${!!fullName}, reg=${!!registrationNumber}, year=${!!year}, sem=${!!semester}, section=${!!section})`);
             continue;
           }
 
@@ -185,9 +191,9 @@ export function AddStudentDialog({ open, onOpenChange, onSuccess }: AddStudentDi
             full_name: String(fullName).trim(),
             registration_number: String(registrationNumber).trim(),
             branch: String(branch).trim(),
-            year: parseInt(String(year)),
-            semester: parseInt(String(semester)),
-            section: String(section).trim(),
+            year: year,
+            semester: semester,
+            section: String(section).trim().toUpperCase(),
             phone_number: phoneNumber ? String(phoneNumber).trim() : null,
           });
 
@@ -431,7 +437,9 @@ export function AddStudentDialog({ open, onOpenChange, onSuccess }: AddStudentDi
                 CSV or Excel file (xlsx, xls)
               </p>
               <p className="text-xs text-muted-foreground mt-4">
-                Required columns: email, password, full_name, registration_number, branch, year, semester, section, phone_number
+                Required columns: email, password, full_name, registration_number, year, semester, section, phone_number
+                <br />
+                <strong>Note:</strong> If branch is missing, it will default to CSE. Year and semester can be text (e.g., "2nd", "3rd").
               </p>
               <Input
                 id="file-upload"

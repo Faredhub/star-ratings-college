@@ -9,8 +9,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
 import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from "@/components/ui/pagination";
-import { Loader2, Send, MessageSquare, X, Filter, Trash2, Search } from "lucide-react";
+import { Loader2, Send, MessageSquare, X, Filter, Trash2, Search, Edit } from "lucide-react";
 import { toast } from "sonner";
+import { EditStudentDialog } from "@/components/EditStudentDialog";
 
 interface Student {
   id: string;
@@ -36,6 +37,8 @@ export function StudentsDialog({ open, onOpenChange }: { open: boolean; onOpenCh
   const [students, setStudents] = useState<Student[]>([]);
   const [filteredStudents, setFilteredStudents] = useState<Student[]>([]);
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
+  const [editingStudent, setEditingStudent] = useState<Student | null>(null);
+  const [showEditDialog, setShowEditDialog] = useState(false);
   const [messageText, setMessageText] = useState("");
   const [messages, setMessages] = useState<Message[]>([]);
   const [sendingMessage, setSendingMessage] = useState(false);
@@ -216,6 +219,11 @@ export function StudentsDialog({ open, onOpenChange }: { open: boolean; onOpenCh
     }
   };
 
+  const handleEditStudent = (student: Student) => {
+    setEditingStudent(student);
+    setShowEditDialog(true);
+  };
+
   // Pagination
   const totalPages = Math.ceil(filteredStudents.length / itemsPerPage);
   const paginatedStudents = filteredStudents.slice(
@@ -339,6 +347,14 @@ export function StudentsDialog({ open, onOpenChange }: { open: boolean; onOpenCh
                           <TableCell>{student.phone_number || "N/A"}</TableCell>
                           <TableCell>
                             <div className="flex gap-2">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => handleEditStudent(student)}
+                              >
+                                <Edit className="h-4 w-4 mr-1" />
+                                Edit
+                              </Button>
                               <Button
                                 size="sm"
                                 variant="outline"
@@ -473,6 +489,13 @@ export function StudentsDialog({ open, onOpenChange }: { open: boolean; onOpenCh
             </Card>
           )}
         </div>
+
+        <EditStudentDialog
+          open={showEditDialog}
+          onOpenChange={setShowEditDialog}
+          student={editingStudent}
+          onSuccess={loadStudents}
+        />
       </DialogContent>
     </Dialog>
   );
