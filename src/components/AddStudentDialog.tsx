@@ -18,6 +18,7 @@ interface AddStudentDialogProps {
 export function AddStudentDialog({ open, onOpenChange, onSuccess }: AddStudentDialogProps) {
   const [loading, setLoading] = useState(false);
   const [uploadMode, setUploadMode] = useState<"manual" | "file">("manual");
+  const [isDragging, setIsDragging] = useState(false);
   const [formData, setFormData] = useState({
     fullName: "",
     email: "",
@@ -81,10 +82,7 @@ export function AddStudentDialog({ open, onOpenChange, onSuccess }: AddStudentDi
     }
   };
 
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
+  const processFile = async (file: File) => {
     setLoading(true);
     try {
       const data = await file.arrayBuffer();
@@ -133,6 +131,39 @@ export function AddStudentDialog({ open, onOpenChange, onSuccess }: AddStudentDi
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    await processFile(file);
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+  };
+
+  const handleDrop = async (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+    
+    const file = e.dataTransfer.files?.[0];
+    if (!file) return;
+
+    // Check file type
+    const fileExtension = file.name.split('.').pop()?.toLowerCase();
+    if (!['csv', 'xlsx', 'xls'].includes(fileExtension || '')) {
+      toast.error("Please upload a CSV or Excel file");
+      return;
+    }
+
+    await processFile(file);
   };
 
   return (
@@ -289,23 +320,41 @@ export function AddStudentDialog({ open, onOpenChange, onSuccess }: AddStudentDi
           </form>
         ) : (
           <div className="space-y-4">
-            <div className="border-2 border-dashed border-border rounded-lg p-8 text-center">
-              <Upload className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-              <Label htmlFor="file-upload" className="cursor-pointer">
-                <span className="text-primary font-medium">Upload CSV or Excel file</span>
-                <Input
-                  id="file-upload"
-                  type="file"
-                  accept=".csv,.xlsx,.xls"
-                  onChange={handleFileUpload}
-                  className="hidden"
-                  disabled={loading}
-                />
-              </Label>
-              <p className="text-sm text-muted-foreground mt-2">
-                File should contain: email, password, full_name, registration_number, branch, year, semester, section, phone_number
+            <div 
+              className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors cursor-pointer ${
+                isDragging 
+                  ? 'border-primary bg-primary/5' 
+                  : 'border-border hover:border-primary/50'
+              }`}
+              onDragOver={handleDragOver}
+              onDragLeave={handleDragLeave}
+              onDrop={handleDrop}
+              onClick={() => document.getElementById('file-upload')?.click()}
+            >
+              <Upload className={`h-12 w-12 mx-auto mb-4 ${isDragging ? 'text-primary' : 'text-muted-foreground'}`} />
+              <p className="text-primary font-medium mb-2">
+                Click to upload or drag and drop
               </p>
+              <p className="text-sm text-muted-foreground">
+                CSV or Excel file (xlsx, xls)
+              </p>
+              <p className="text-xs text-muted-foreground mt-4">
+                Required columns: email, password, full_name, registration_number, branch, year, semester, section, phone_number
+              </p>
+              <Input
+                id="file-upload"
+                type="file"
+                accept=".csv,.xlsx,.xls"
+                onChange={handleFileUpload}
+                className="hidden"
+                disabled={loading}
+              />
             </div>
+            {loading && (
+              <p className="text-center text-sm text-muted-foreground">
+                Processing file...
+              </p>
+            )}
           </div>
         )}
       </DialogContent>
