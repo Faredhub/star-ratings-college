@@ -90,25 +90,49 @@ export function AddStudentDialog({ open, onOpenChange, onSuccess }: AddStudentDi
       const worksheet = workbook.Sheets[workbook.SheetNames[0]];
       const jsonData = XLSX.utils.sheet_to_json(worksheet);
 
+      if (jsonData.length === 0) {
+        toast.error("No data found in the file");
+        setLoading(false);
+        return;
+      }
+
+      let successCount = 0;
+      let failedCount = 0;
+      const errors: string[] = [];
+
       // Process each row
       for (const row of jsonData) {
         try {
           const rowData = row as any;
-          // Create auth user
-          const { data: authData, error: authError } = await supabase.auth.signUp({
-            email: rowData.email || rowData.Email,
-            password: rowData.password || rowData.Password,
-          });
-
-          if (authError) {
-            console.error(`Failed to create user ${rowData.email}:`, authError);
+          const email = rowData.email || rowData.Email;
+          const password = rowData.password || rowData.Password;
+          
+          if (!email || !password) {
+            failedCount++;
+            errors.push(`Row missing email or password`);
             continue;
           }
 
-          if (!authData.user) continue;
+          // Create auth user
+          const { data: authData, error: authError } = await supabase.auth.signUp({
+            email: email,
+            password: password,
+          });
+
+          if (authError) {
+            failedCount++;
+            errors.push(`${email}: ${authError.message}`);
+            continue;
+          }
+
+          if (!authData.user) {
+            failedCount++;
+            errors.push(`${email}: User creation failed`);
+            continue;
+          }
 
           // Create profile
-          await supabase.from("profiles").insert({
+          const { error: profileError } = await supabase.from("profiles").insert({
             id: authData.user.id,
             full_name: rowData.full_name || rowData.fullName || rowData["Full Name"],
             registration_number: rowData.registration_number || rowData.registrationNumber || rowData["Registration Number"],
@@ -118,14 +142,34 @@ export function AddStudentDialog({ open, onOpenChange, onSuccess }: AddStudentDi
             section: rowData.section || rowData.Section,
             phone_number: rowData.phone_number || rowData.phoneNumber || rowData["Phone Number"],
           });
-        } catch (error) {
-          console.error("Error processing row:", error);
+
+          if (profileError) {
+            failedCount++;
+            errors.push(`${email}: ${profileError.message}`);
+            continue;
+          }
+
+          successCount++;
+        } catch (error: any) {
+          failedCount++;
+          errors.push(`Row error: ${error.message}`);
         }
       }
 
-      toast.success("Students imported successfully");
-      onSuccess();
-      onOpenChange(false);
+      // Show detailed feedback
+      if (successCount > 0) {
+        toast.success(`Successfully added ${successCount} student(s)`);
+      }
+      
+      if (failedCount > 0) {
+        toast.error(`Failed to add ${failedCount} student(s). Check console for details.`);
+        console.error("Import errors:", errors);
+      }
+
+      if (successCount > 0) {
+        onSuccess();
+        onOpenChange(false);
+      }
     } catch (error: any) {
       toast.error(error.message || "Failed to import students");
     } finally {
