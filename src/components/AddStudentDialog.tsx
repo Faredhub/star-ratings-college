@@ -100,34 +100,54 @@ export function AddStudentDialog({ open, onOpenChange, onSuccess }: AddStudentDi
       let failedCount = 0;
       const errors: string[] = [];
 
+      // Log available columns for debugging
+      if (jsonData.length > 0) {
+        console.log("Excel columns found:", Object.keys(jsonData[0]));
+      }
+
       // Process each row
       for (const row of jsonData) {
         try {
           const rowData = row as any;
           
-          // Create case-insensitive key lookup
+          // Create flexible field lookup that checks partial matches
           const getField = (fieldNames: string[]) => {
-            for (const key of Object.keys(rowData)) {
-              const normalizedKey = key.toLowerCase().trim().replace(/\s+/g, '_');
+            const keys = Object.keys(rowData);
+            
+            // First try exact match (case-insensitive)
+            for (const key of keys) {
+              const normalizedKey = key.toLowerCase().trim().replace(/\s+/g, '').replace(/_/g, '');
               for (const fieldName of fieldNames) {
-                const normalizedField = fieldName.toLowerCase().trim().replace(/\s+/g, '_');
+                const normalizedField = fieldName.toLowerCase().trim().replace(/\s+/g, '').replace(/_/g, '');
                 if (normalizedKey === normalizedField) {
                   return rowData[key];
                 }
               }
             }
+            
+            // Then try partial match (contains)
+            for (const key of keys) {
+              const normalizedKey = key.toLowerCase().trim();
+              for (const fieldName of fieldNames) {
+                const normalizedField = fieldName.toLowerCase().trim();
+                if (normalizedKey.includes(normalizedField) || normalizedField.includes(normalizedKey)) {
+                  return rowData[key];
+                }
+              }
+            }
+            
             return null;
           };
 
-          const email = getField(['email', 'Email', 'EMAIL', 'e-mail', 'E-mail']);
-          const password = getField(['password', 'Password', 'PASSWORD']);
-          const fullName = getField(['full_name', 'fullName', 'Full Name', 'full name', 'name', 'Name']);
-          const registrationNumber = getField(['registration_number', 'registrationNumber', 'Registration Number', 'reg_no', 'regno']);
-          const branch = getField(['branch', 'Branch', 'BRANCH', 'department', 'Department']);
-          const year = getField(['year', 'Year', 'YEAR']);
-          const semester = getField(['semester', 'Semester', 'SEMESTER', 'sem', 'Sem']);
-          const section = getField(['section', 'Section', 'SECTION', 'sec', 'Sec']);
-          const phoneNumber = getField(['phone_number', 'phoneNumber', 'Phone Number', 'phone', 'Phone', 'mobile']);
+          const email = getField(['email', 'mail', 'e-mail', 'emailid']);
+          const password = getField(['password', 'pass', 'pwd']);
+          const fullName = getField(['fullname', 'full_name', 'name', 'studentname', 'student']);
+          const registrationNumber = getField(['registration', 'regno', 'reg', 'registrationnumber', 'regnumber']);
+          const branch = getField(['branch', 'department', 'dept', 'stream']);
+          const year = getField(['year', 'yr', 'class']);
+          const semester = getField(['semester', 'sem']);
+          const section = getField(['section', 'sec', 'div']);
+          const phoneNumber = getField(['phone', 'mobile', 'contact', 'phonenumber', 'mobilenumber']);
           
           if (!email || !password) {
             failedCount++;
