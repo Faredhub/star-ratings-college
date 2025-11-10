@@ -58,6 +58,7 @@ export default function AdminDashboard() {
   const [searchQuery, setSearchQuery] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
+  const [isSuperAdmin, setIsSuperAdmin] = useState(false);
 
   useEffect(() => {
     checkAdminAccess();
@@ -101,7 +102,11 @@ export default function AdminDashboard() {
       if (!roleData || roleData.role !== "admin") {
         toast.error("Access denied");
         navigate("/student-login");
+        return;
       }
+
+      // Check if super admin (bpskar2@gmail.com)
+      setIsSuperAdmin(user.email === "bpskar2@gmail.com");
     } catch (error) {
       navigate("/admin-login");
     }
@@ -409,18 +414,22 @@ export default function AdminDashboard() {
                 <Plus className="mr-2 h-4 w-4" />
                 Add Faculty
               </Button>
-              <Button onClick={() => setShowAddStudentDialog(true)} variant="default">
-                <UserPlus className="mr-2 h-4 w-4" />
-                Add Student
-              </Button>
-              <Button onClick={handleExportExcel} variant="outline">
-                <FileSpreadsheet className="mr-2 h-4 w-4" />
-                Export Excel
-              </Button>
-              <Button onClick={handleExportPDF} variant="outline">
-                <Download className="mr-2 h-4 w-4" />
-                Export PDF
-              </Button>
+              {isSuperAdmin && (
+                <>
+                  <Button onClick={() => setShowAddStudentDialog(true)} variant="default">
+                    <UserPlus className="mr-2 h-4 w-4" />
+                    Add Student
+                  </Button>
+                  <Button onClick={handleExportExcel} variant="outline">
+                    <FileSpreadsheet className="mr-2 h-4 w-4" />
+                    Export Excel
+                  </Button>
+                  <Button onClick={handleExportPDF} variant="outline">
+                    <Download className="mr-2 h-4 w-4" />
+                    Export PDF
+                  </Button>
+                </>
+              )}
               <ThemeToggle />
               <Button onClick={handleLogout} variant="outline">
                 <LogOut className="mr-2 h-4 w-4" />

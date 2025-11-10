@@ -205,17 +205,16 @@ export function StudentsDialog({ open, onOpenChange }: { open: boolean; onOpenCh
     }
 
     try {
-      const { error } = await supabase
-        .from("profiles")
-        .delete()
-        .eq("id", studentId);
-
-      if (error) throw error;
+      // Delete from auth.users which will cascade delete profile, ratings, and messages
+      const { error: authError } = await supabase.auth.admin.deleteUser(studentId);
+      
+      if (authError) throw authError;
+      
       toast.success("Student deleted successfully");
       loadStudents();
     } catch (error: any) {
       console.error("Error deleting student:", error);
-      toast.error("Failed to delete student");
+      toast.error("Failed to delete student: " + error.message);
     }
   };
 
