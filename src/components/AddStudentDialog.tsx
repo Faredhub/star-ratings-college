@@ -104,19 +104,47 @@ export function AddStudentDialog({ open, onOpenChange, onSuccess }: AddStudentDi
       for (const row of jsonData) {
         try {
           const rowData = row as any;
-          const email = rowData.email || rowData.Email;
-          const password = rowData.password || rowData.Password;
+          
+          // Create case-insensitive key lookup
+          const getField = (fieldNames: string[]) => {
+            for (const key of Object.keys(rowData)) {
+              const normalizedKey = key.toLowerCase().trim().replace(/\s+/g, '_');
+              for (const fieldName of fieldNames) {
+                const normalizedField = fieldName.toLowerCase().trim().replace(/\s+/g, '_');
+                if (normalizedKey === normalizedField) {
+                  return rowData[key];
+                }
+              }
+            }
+            return null;
+          };
+
+          const email = getField(['email', 'Email', 'EMAIL', 'e-mail', 'E-mail']);
+          const password = getField(['password', 'Password', 'PASSWORD']);
+          const fullName = getField(['full_name', 'fullName', 'Full Name', 'full name', 'name', 'Name']);
+          const registrationNumber = getField(['registration_number', 'registrationNumber', 'Registration Number', 'reg_no', 'regno']);
+          const branch = getField(['branch', 'Branch', 'BRANCH', 'department', 'Department']);
+          const year = getField(['year', 'Year', 'YEAR']);
+          const semester = getField(['semester', 'Semester', 'SEMESTER', 'sem', 'Sem']);
+          const section = getField(['section', 'Section', 'SECTION', 'sec', 'Sec']);
+          const phoneNumber = getField(['phone_number', 'phoneNumber', 'Phone Number', 'phone', 'Phone', 'mobile']);
           
           if (!email || !password) {
             failedCount++;
-            errors.push(`Row missing email or password`);
+            errors.push(`Row ${failedCount + successCount}: Missing email or password`);
+            continue;
+          }
+
+          if (!fullName || !registrationNumber || !branch || !year || !semester || !section) {
+            failedCount++;
+            errors.push(`Row ${failedCount + successCount}: Missing required fields (name, registration number, branch, year, semester, or section)`);
             continue;
           }
 
           // Create auth user
           const { data: authData, error: authError } = await supabase.auth.signUp({
-            email: email,
-            password: password,
+            email: String(email).trim(),
+            password: String(password),
           });
 
           if (authError) {
@@ -134,13 +162,13 @@ export function AddStudentDialog({ open, onOpenChange, onSuccess }: AddStudentDi
           // Create profile
           const { error: profileError } = await supabase.from("profiles").insert({
             id: authData.user.id,
-            full_name: rowData.full_name || rowData.fullName || rowData["Full Name"],
-            registration_number: rowData.registration_number || rowData.registrationNumber || rowData["Registration Number"],
-            branch: rowData.branch || rowData.Branch,
-            year: parseInt(rowData.year || rowData.Year),
-            semester: parseInt(rowData.semester || rowData.Semester),
-            section: rowData.section || rowData.Section,
-            phone_number: rowData.phone_number || rowData.phoneNumber || rowData["Phone Number"],
+            full_name: String(fullName).trim(),
+            registration_number: String(registrationNumber).trim(),
+            branch: String(branch).trim(),
+            year: parseInt(String(year)),
+            semester: parseInt(String(semester)),
+            section: String(section).trim(),
+            phone_number: phoneNumber ? String(phoneNumber).trim() : null,
           });
 
           if (profileError) {
