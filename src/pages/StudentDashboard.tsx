@@ -276,16 +276,22 @@ export default function StudentDashboard() {
             <div className="space-y-6">
               <div>
                 <Label>Select Faculty & Subject</Label>
-                <Select value={selectedAssignment} onValueChange={setSelectedAssignment}>
+                <Select value={selectedAssignment} onValueChange={setSelectedAssignment} disabled={facultyAssignments.length === 0}>
                   <SelectTrigger>
-                    <SelectValue placeholder="Choose faculty and subject to rate" />
+                    <SelectValue placeholder={facultyAssignments.length === 0 ? "No faculty assigned yet" : "Choose faculty and subject to rate"} />
                   </SelectTrigger>
                   <SelectContent>
-                    {facultyAssignments.map((assignment) => (
-                      <SelectItem key={assignment.id} value={assignment.id}>
-                        {assignment.faculty.name} - {assignment.subject}
+                    {facultyAssignments.length === 0 ? (
+                      <SelectItem value="no-faculty" disabled>
+                        No faculty assigned to your class yet
                       </SelectItem>
-                    ))}
+                    ) : (
+                      facultyAssignments.map((assignment) => (
+                        <SelectItem key={assignment.id} value={assignment.id}>
+                          {assignment.faculty.name} - {assignment.subject}
+                        </SelectItem>
+                      ))
+                    )}
                   </SelectContent>
                 </Select>
               </div>

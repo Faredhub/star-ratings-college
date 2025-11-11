@@ -205,13 +205,31 @@ export function StudentsDialog({ open, onOpenChange }: { open: boolean; onOpenCh
     }
 
     try {
-      // Delete from auth.users which will cascade delete profile, ratings, and messages
-      const { error: authError } = await supabase.auth.admin.deleteUser(studentId);
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error("Not authenticated");
+
+      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/delete-student`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ studentId }),
+      });
+
+      const result = await response.json();
       
-      if (authError) throw authError;
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to delete student');
+      }
       
       toast.success("Student deleted successfully");
       loadStudents();
+      
+      // Close message panel if deleted student was selected
+      if (selectedStudent?.id === studentId) {
+        setSelectedStudent(null);
+      }
     } catch (error: any) {
       console.error("Error deleting student:", error);
       toast.error("Failed to delete student: " + error.message);
