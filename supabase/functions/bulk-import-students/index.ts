@@ -48,7 +48,7 @@ serve(async (req) => {
       throw new Error("User is not an admin");
     }
 
-    // Students data to import
+    // Students data to import from Excel
     const students = [
       {
         email: "satyammallik@123gmail.com",
@@ -84,6 +84,8 @@ serve(async (req) => {
         branch: "CSE"
       }
     ];
+
+    console.log(`Starting import of ${students.length} students...`);
 
     const results = [];
     const errors = [];
