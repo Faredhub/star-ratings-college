@@ -1,6 +1,6 @@
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { GraduationCap, Shield, UserPlus } from "lucide-react";
+import { GraduationCap, Shield } from "lucide-react";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import nalandaLogo from "@/assets/nalanda-logo.png";
 
@@ -39,15 +39,6 @@ const Index = () => {
           >
             <GraduationCap className="mr-2 h-5 w-5" />
             Student Login
-          </Button>
-          <Button
-            size="lg"
-            variant="secondary"
-            className="w-full sm:w-auto px-8"
-            onClick={() => navigate("/student-register")}
-          >
-            <UserPlus className="mr-2 h-5 w-5" />
-            Student Register
           </Button>
           <Button
             size="lg"
