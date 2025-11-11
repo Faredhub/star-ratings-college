@@ -23,6 +23,7 @@ interface Student {
   branch: string;
   phone_number: string | null;
   created_at: string;
+  email?: string;
 }
 
 interface Message {
@@ -117,21 +118,33 @@ export function StudentsDialog({ open, onOpenChange }: { open: boolean; onOpenCh
   const loadStudents = async () => {
     setLoading(true);
     try {
-      const { data, error } = await supabase
-        .from("profiles")
-        .select("*")
-        .order("created_at", { ascending: false });
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error("Not authenticated");
 
-      if (error) throw error;
+      // Fetch students with emails via edge function
+      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/get-students-with-emails`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      const result = await response.json();
       
-      setStudents(data || []);
-      setFilteredStudents(data || []);
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to load students');
+      }
+      
+      const studentsData = result.students as Student[] || [];
+      setStudents(studentsData);
+      setFilteredStudents(studentsData);
 
       // Extract unique filter values
-      if (data) {
-        const semesters = [...new Set(data.map(s => s.semester))].sort((a, b) => a - b);
-        const sections = [...new Set(data.map(s => s.section))].sort();
-        const branches = [...new Set(data.map(s => s.branch))].sort();
+      if (studentsData.length > 0) {
+        const semesters = [...new Set(studentsData.map(s => s.semester))].sort((a, b) => a - b);
+        const sections = [...new Set(studentsData.map(s => s.section))].sort();
+        const branches = [...new Set(studentsData.map(s => s.branch))].sort();
         
         setAvailableSemesters(semesters);
         setAvailableSections(sections);
@@ -341,6 +354,7 @@ export function StudentsDialog({ open, onOpenChange }: { open: boolean; onOpenCh
                   <TableHeader>
                     <TableRow>
                       <TableHead>Name</TableHead>
+                      <TableHead>Email</TableHead>
                       <TableHead>Reg. No.</TableHead>
                       <TableHead>Branch</TableHead>
                       <TableHead>Year/Sem</TableHead>
@@ -357,6 +371,7 @@ export function StudentsDialog({ open, onOpenChange }: { open: boolean; onOpenCh
                           className={selectedStudent?.id === student.id ? "bg-muted" : ""}
                         >
                           <TableCell className="font-medium">{student.full_name}</TableCell>
+                          <TableCell className="text-sm">{student.email || 'N/A'}</TableCell>
                           <TableCell>{student.registration_number}</TableCell>
                           <TableCell>{student.branch}</TableCell>
                           <TableCell>Y{student.year}/S{student.semester}</TableCell>
@@ -393,7 +408,7 @@ export function StudentsDialog({ open, onOpenChange }: { open: boolean; onOpenCh
                       ))
                     ) : (
                       <TableRow>
-                        <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                        <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
                           No students found matching your criteria
                         </TableCell>
                       </TableRow>
