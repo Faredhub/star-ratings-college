@@ -25,10 +25,10 @@ export default function StudentRegister() {
     phoneNumber: ""
   });
 
-  const branches = ["Computer Science", "Information Technology", "Electronics", "Mechanical", "Civil", "Electrical"];
+  const branches = ["CSE", "CST", "ME", "EE", "CE", "MCA", "MBA", "BBA"];
   const years = ["1", "2", "3", "4"];
   const semesters = ["1", "2", "3", "4", "5", "6", "7", "8"];
-  const sections = ["A", "B", "C", "D"];
+  const sections = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J"];
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

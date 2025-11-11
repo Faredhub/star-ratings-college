@@ -381,10 +381,13 @@ export function AddStudentDialog({ open, onOpenChange, onSuccess }: AddStudentDi
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="CSE">CSE</SelectItem>
-                    <SelectItem value="ECE">ECE</SelectItem>
-                    <SelectItem value="EEE">EEE</SelectItem>
+                    <SelectItem value="CST">CST</SelectItem>
                     <SelectItem value="ME">ME</SelectItem>
+                    <SelectItem value="EE">EE</SelectItem>
                     <SelectItem value="CE">CE</SelectItem>
+                    <SelectItem value="MCA">MCA</SelectItem>
+                    <SelectItem value="MBA">MBA</SelectItem>
+                    <SelectItem value="BBA">BBA</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -427,7 +430,7 @@ export function AddStudentDialog({ open, onOpenChange, onSuccess }: AddStudentDi
                     <SelectValue placeholder="Select section" />
                   </SelectTrigger>
                   <SelectContent>
-                    {["A", "B", "C", "D"].map((sec) => (
+                    {["A", "B", "C", "D", "E", "F", "G", "H", "I", "J"].map((sec) => (
                       <SelectItem key={sec} value={sec}>
                         Section {sec}
                       </SelectItem>
