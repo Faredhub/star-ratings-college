@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { Eye, EyeOff } from "lucide-react";
 
 interface Student {
   id: string;
@@ -27,6 +28,7 @@ interface EditStudentDialogProps {
 
 export function EditStudentDialog({ open, onOpenChange, student, onSuccess }: EditStudentDialogProps) {
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const [formData, setFormData] = useState({
     fullName: "",
     phoneNumber: "",
@@ -35,6 +37,7 @@ export function EditStudentDialog({ open, onOpenChange, student, onSuccess }: Ed
     year: "",
     semester: "",
     section: "",
+    password: "",
   });
 
   useEffect(() => {
@@ -47,6 +50,7 @@ export function EditStudentDialog({ open, onOpenChange, student, onSuccess }: Ed
         year: student.year.toString(),
         semester: student.semester.toString(),
         section: student.section,
+        password: "",
       });
     }
   }, [student]);
@@ -58,7 +62,8 @@ export function EditStudentDialog({ open, onOpenChange, student, onSuccess }: Ed
     setLoading(true);
 
     try {
-      const { error } = await supabase
+      // Update profile
+      const { error: profileError } = await supabase
         .from("profiles")
         .update({
           full_name: formData.fullName,
@@ -71,7 +76,17 @@ export function EditStudentDialog({ open, onOpenChange, student, onSuccess }: Ed
         })
         .eq("id", student.id);
 
-      if (error) throw error;
+      if (profileError) throw profileError;
+
+      // Update password if provided
+      if (formData.password.trim()) {
+        const { error: passwordError } = await supabase.auth.admin.updateUserById(
+          student.id,
+          { password: formData.password }
+        );
+
+        if (passwordError) throw passwordError;
+      }
 
       toast.success("Student updated successfully");
       onSuccess();
@@ -111,6 +126,32 @@ export function EditStudentDialog({ open, onOpenChange, student, onSuccess }: Ed
                 value={formData.phoneNumber}
                 onChange={(e) => setFormData({ ...formData, phoneNumber: e.target.value })}
               />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="password">Password (leave empty to keep current)</Label>
+              <div className="relative">
+                <Input
+                  id="password"
+                  type={showPassword ? "text" : "password"}
+                  value={formData.password}
+                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                  placeholder="Enter new password"
+                />
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="absolute right-0 top-0 h-full px-3 hover:bg-transparent"
+                  onClick={() => setShowPassword(!showPassword)}
+                >
+                  {showPassword ? (
+                    <EyeOff className="h-4 w-4 text-muted-foreground" />
+                  ) : (
+                    <Eye className="h-4 w-4 text-muted-foreground" />
+                  )}
+                </Button>
+              </div>
             </div>
 
             <div className="space-y-2">
@@ -185,12 +226,6 @@ export function EditStudentDialog({ open, onOpenChange, student, onSuccess }: Ed
                 </SelectContent>
               </Select>
             </div>
-          </div>
-
-          <div className="space-y-2 p-4 bg-muted rounded-lg">
-            <p className="text-sm text-muted-foreground">
-              <strong>Note:</strong> Passwords are encrypted and cannot be viewed. To reset a student's password, they should use the "Forgot Password" feature on the login page.
-            </p>
           </div>
 
           <Button type="submit" className="w-full" disabled={loading}>
