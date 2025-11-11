@@ -142,13 +142,13 @@ export function AddStudentDialog({ open, onOpenChange, onSuccess }: AddStudentDi
 
           const email = getField(['email', 'mail', 'e-mail', 'emailid']);
           const password = getField(['password', 'pass', 'pwd']);
-          const fullName = getField(['fullname', 'full_name', 'name', 'studentname', 'student']);
-          const registrationNumber = getField(['registration', 'regno', 'reg', 'registrationnumber', 'regnumber', 'regstitionno']);
+          const fullName = getField(['fullname', 'full_name', 'name', 'studentname', 'student', 'fullname']);
+          const registrationNumber = getField(['registration', 'regno', 'reg', 'registrationnumber', 'regnumber', 'regstitionno', 'regstitionno.']);
           const branch = getField(['branch', 'department', 'dept', 'stream']) || 'CSE'; // Default branch if missing
           const yearRaw = getField(['year', 'yr', 'class']);
           const semesterRaw = getField(['semester', 'sem', 'semestar']);
           const section = getField(['section', 'sec', 'div']);
-          const phoneNumber = getField(['phone', 'mobile', 'contact', 'phonenumber', 'mobilenumber', 'phoneno']);
+          const phoneNumber = getField(['phone', 'mobile', 'contact', 'phonenumber', 'mobilenumber', 'phoneno', 'phoneno.']);
           
           // Parse year from text like "2nd" -> 2
           const year = yearRaw ? parseInt(String(yearRaw).replace(/\D/g, '')) : null;
@@ -235,6 +235,14 @@ export function AddStudentDialog({ open, onOpenChange, onSuccess }: AddStudentDi
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    
+    // Validate file type
+    const fileExtension = file.name.split('.').pop()?.toLowerCase();
+    if (!['csv', 'xlsx', 'xls'].includes(fileExtension || '')) {
+      toast.error("Please upload a CSV or Excel file");
+      return;
+    }
+    
     await processFile(file);
   };
 
