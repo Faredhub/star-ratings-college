@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -9,15 +9,10 @@ import { Card } from "@/components/ui/card";
 import { GraduationCap, Loader2, ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
 import { ThemeToggle } from "@/components/ThemeToggle";
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem } from "@/components/ui/command";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Check, ChevronsUpDown } from "lucide-react";
-import { cn } from "@/lib/utils";
 
 export default function StudentRegister() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
-  const [open, setOpen] = useState(false);
   const [formData, setFormData] = useState({
     fullName: "",
     email: "",
@@ -34,15 +29,6 @@ export default function StudentRegister() {
   const years = ["1", "2", "3", "4"];
   const semesters = ["1", "2", "3", "4", "5", "6", "7", "8"];
   const sections = ["A", "B", "C", "D"];
-
-  // Generate registration numbers from 2201297001 to 2201297300
-  const registrationNumbers = useMemo(() => {
-    const numbers = [];
-    for (let i = 1; i <= 300; i++) {
-      numbers.push(`2201297${String(i).padStart(3, '0')}`);
-    }
-    return numbers;
-  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -158,45 +144,13 @@ export default function StudentRegister() {
 
             <div className="space-y-2">
               <Label htmlFor="registrationNumber">Registration Number</Label>
-              <Popover open={open} onOpenChange={setOpen}>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    role="combobox"
-                    aria-expanded={open}
-                    className="w-full justify-between"
-                  >
-                    {formData.registrationNumber || "Search registration number..."}
-                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-full p-0" align="start">
-                  <Command>
-                    <CommandInput placeholder="Search registration number..." />
-                    <CommandEmpty>No registration number found.</CommandEmpty>
-                    <CommandGroup className="max-h-64 overflow-auto">
-                      {registrationNumbers.map((regNum) => (
-                        <CommandItem
-                          key={regNum}
-                          value={regNum}
-                          onSelect={(currentValue) => {
-                            setFormData({ ...formData, registrationNumber: currentValue });
-                            setOpen(false);
-                          }}
-                        >
-                          <Check
-                            className={cn(
-                              "mr-2 h-4 w-4",
-                              formData.registrationNumber === regNum ? "opacity-100" : "opacity-0"
-                            )}
-                          />
-                          {regNum}
-                        </CommandItem>
-                      ))}
-                    </CommandGroup>
-                  </Command>
-                </PopoverContent>
-              </Popover>
+              <Input
+                id="registrationNumber"
+                placeholder="Enter your registration number"
+                value={formData.registrationNumber}
+                onChange={(e) => setFormData({ ...formData, registrationNumber: e.target.value })}
+                required
+              />
             </div>
 
             <div className="space-y-2">
