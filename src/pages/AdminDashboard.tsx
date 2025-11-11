@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Shield, LogOut, Loader2, Users, BookOpen, Star, TrendingUp, Eye, Download, Mail, ArrowLeft, Plus, Filter, Trash2, Edit, BarChart3, PieChart as PieChartIcon, LineChart as LineChartIcon, UserPlus, FileSpreadsheet, Search } from "lucide-react";
+import { Shield, LogOut, Loader2, Users, BookOpen, Star, TrendingUp, Eye, Download, Mail, ArrowLeft, Plus, Filter, Trash2, Edit, BarChart3, PieChart as PieChartIcon, LineChart as LineChartIcon, UserPlus, FileSpreadsheet, Search, Upload } from "lucide-react";
 import { toast } from "sonner";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line, Legend } from "recharts";
@@ -310,6 +310,50 @@ export default function AdminDashboard() {
     }
   };
 
+  const handleBulkImport = async () => {
+    if (!confirm("This will import 3 students from the Excel file. Continue?")) {
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session) {
+        toast.error("Not authenticated");
+        return;
+      }
+
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/bulk-import-students`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${session.access_token}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || "Import failed");
+      }
+
+      toast.success(`Successfully imported ${result.imported} students. Failed: ${result.failed}`);
+      if (result.errors && result.errors.length > 0) {
+        console.error("Import errors:", result.errors);
+      }
+      loadDashboardData();
+    } catch (error: any) {
+      console.error("Error importing students:", error);
+      toast.error(error.message || "Failed to import students");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // Filter faculty based on selected filters and search query
   const filteredFaculty = faculty.filter(f => {
     const facultyAssignments = allAssignments.filter(a => a.faculty_id === f.id);
@@ -419,6 +463,10 @@ export default function AdminDashboard() {
                   <Button onClick={() => setShowAddStudentDialog(true)} variant="default">
                     <UserPlus className="mr-2 h-4 w-4" />
                     Add Student
+                  </Button>
+                  <Button onClick={handleBulkImport} variant="secondary">
+                    <Upload className="mr-2 h-4 w-4" />
+                    Import Excel Data
                   </Button>
                   <Button onClick={handleExportExcel} variant="outline">
                     <FileSpreadsheet className="mr-2 h-4 w-4" />
