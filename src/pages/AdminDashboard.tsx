@@ -633,10 +633,10 @@ export default function AdminDashboard() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-muted-foreground">Total Faculty</p>
-                <p className="text-3xl font-bold text-secondary">{stats.totalFaculty}</p>
+                <p className="text-3xl font-bold text-primary">{stats.totalFaculty}</p>
                 <p className="text-xs text-muted-foreground mt-1">Registered faculty</p>
               </div>
-              <BookOpen className="h-10 w-10 text-secondary/20" />
+              <BookOpen className="h-10 w-10 text-primary/20" />
             </div>
           </Card>
 

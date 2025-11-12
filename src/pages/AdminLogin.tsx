@@ -128,20 +128,6 @@ export default function AdminLogin() {
             </Link>
           </p>
         </form>
-
-        <div className="mt-6 p-4 bg-yellow-100 dark:bg-yellow-900/30 rounded-lg border border-yellow-300 dark:border-yellow-700">
-          <p className="text-sm font-semibold text-yellow-900 dark:text-yellow-200 mb-2">⚠️ Admin Setup Required</p>
-          <p className="text-xs text-yellow-800 dark:text-yellow-300 mb-3">
-            To create an admin account:
-          </p>
-          <ol className="text-xs text-yellow-800 dark:text-yellow-300 space-y-1 list-decimal list-inside">
-            <li>Register as a student with your admin email</li>
-            <li>Go to Lovable Cloud dashboard</li>
-            <li>Open the "user_roles" table</li>
-            <li>Add a new row with your user_id, role: "admin", and admin_code: "2025"</li>
-            <li>Then login here with your credentials and code "2025"</li>
-          </ol>
-        </div>
       </Card>
     </div>
   );

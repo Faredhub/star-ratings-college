@@ -9,10 +9,13 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
 import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from "@/components/ui/pagination";
-import { Loader2, Send, MessageSquare, X, Filter, Trash2, Search, Edit, Trash } from "lucide-react";
+import { Loader2, Send, MessageSquare, X, Filter, Trash2, Search, Edit, Trash, FileSpreadsheet, FileText } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 import { EditStudentDialog } from "@/components/EditStudentDialog";
+import * as XLSX from 'xlsx';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 interface Student {
   id: string;
@@ -328,6 +331,68 @@ export function StudentsDialog({ open, onOpenChange }: { open: boolean; onOpenCh
     setSelectedStudentIds(newSelected);
   };
 
+  const handleExportExcel = () => {
+    try {
+      const exportData = filteredStudents.map(s => ({
+        "Full Name": s.full_name,
+        "Email": s.email || "N/A",
+        "Registration Number": s.registration_number,
+        "Year": s.year,
+        "Semester": s.semester,
+        "Section": s.section,
+        "Branch": s.branch,
+        "Phone Number": s.phone_number || "N/A",
+        "Registered Date": new Date(s.created_at).toLocaleDateString()
+      }));
+
+      const wb = XLSX.utils.book_new();
+      const ws = XLSX.utils.json_to_sheet(exportData);
+      XLSX.utils.book_append_sheet(wb, ws, "Students");
+      XLSX.writeFile(wb, `students-data-${new Date().toISOString().split('T')[0]}.xlsx`);
+      toast.success("Excel file exported successfully!");
+    } catch (error) {
+      console.error("Error exporting Excel:", error);
+      toast.error("Failed to export Excel file");
+    }
+  };
+
+  const handleExportPDF = () => {
+    try {
+      const doc = new jsPDF();
+      
+      doc.setFontSize(18);
+      doc.text("Student Data Report", 14, 20);
+      doc.setFontSize(11);
+      doc.text(`Generated on: ${new Date().toLocaleDateString()}`, 14, 28);
+      doc.text(`Total Students: ${filteredStudents.length}`, 14, 35);
+      
+      const tableData = filteredStudents.map(s => [
+        s.full_name,
+        s.email || "N/A",
+        s.registration_number,
+        `Y${s.year}/S${s.semester}`,
+        s.section,
+        s.branch,
+        s.phone_number || "N/A"
+      ]);
+
+      autoTable(doc, {
+        head: [["Name", "Email", "Reg. No.", "Year/Sem", "Section", "Branch", "Phone"]],
+        body: tableData,
+        startY: 42,
+        theme: 'grid',
+        styles: { fontSize: 8 },
+        headStyles: { fillColor: [59, 130, 246] }
+      });
+
+      doc.save(`students-data-${new Date().toISOString().split('T')[0]}.pdf`);
+      toast.success("PDF file exported successfully!");
+    } catch (error) {
+      console.error("Error exporting PDF:", error);
+      toast.error("Failed to export PDF file");
+    }
+  };
+
   // Pagination
   const totalPages = Math.ceil(filteredStudents.length / itemsPerPage);
   const paginatedStudents = filteredStudents.slice(
@@ -339,7 +404,29 @@ export function StudentsDialog({ open, onOpenChange }: { open: boolean; onOpenCh
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-7xl max-h-[90vh] overflow-hidden flex flex-col">
         <DialogHeader>
-          <DialogTitle className="text-2xl gradient-text">Student Management</DialogTitle>
+          <div className="flex items-center justify-between">
+            <DialogTitle className="text-2xl gradient-text">Student Management</DialogTitle>
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleExportExcel}
+                disabled={filteredStudents.length === 0}
+              >
+                <FileSpreadsheet className="h-4 w-4 mr-2" />
+                Export Excel
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleExportPDF}
+                disabled={filteredStudents.length === 0}
+              >
+                <FileText className="h-4 w-4 mr-2" />
+                Export PDF
+              </Button>
+            </div>
+          </div>
         </DialogHeader>
 
         <div className="flex-1 overflow-hidden flex gap-4">
