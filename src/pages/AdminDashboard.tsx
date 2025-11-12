@@ -5,7 +5,9 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Shield, LogOut, Loader2, Users, BookOpen, Star, TrendingUp, Eye, Download, Mail, ArrowLeft, Plus, Filter, Trash2, Edit, BarChart3, PieChart as PieChartIcon, LineChart as LineChartIcon, UserPlus, FileSpreadsheet, Search, Upload } from "lucide-react";
+import { Shield, LogOut, Loader2, Users, BookOpen, Star, TrendingUp, Eye, Download, Mail, ArrowLeft, Plus, Filter, Trash2, Edit, BarChart3, PieChart as PieChartIcon, LineChart as LineChartIcon, UserPlus, FileSpreadsheet, Search, Upload, Trash, Settings } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line, Legend } from "recharts";
@@ -59,10 +61,14 @@ export default function AdminDashboard() {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
   const [isSuperAdmin, setIsSuperAdmin] = useState(false);
+  const [selectedFacultyIds, setSelectedFacultyIds] = useState<Set<string>>(new Set());
+  const [registrationEnabled, setRegistrationEnabled] = useState(true);
+  const [loadingSettings, setLoadingSettings] = useState(false);
 
   useEffect(() => {
     checkAdminAccess();
     loadDashboardData();
+    loadSettings();
 
     // Set up realtime subscription for profile changes
     const channel = supabase
@@ -310,6 +316,99 @@ export default function AdminDashboard() {
     }
   };
 
+  const handleBulkDeleteFaculty = async () => {
+    if (selectedFacultyIds.size === 0) {
+      toast.error("Please select faculty members to delete");
+      return;
+    }
+
+    if (!confirm(`Are you sure you want to delete ${selectedFacultyIds.size} faculty member(s)? This will also delete all their assignments and ratings.`)) {
+      return;
+    }
+
+    let successCount = 0;
+    let failCount = 0;
+
+    for (const facultyId of selectedFacultyIds) {
+      try {
+        const { error } = await supabase
+          .from("faculty")
+          .delete()
+          .eq("id", facultyId);
+
+        if (!error) {
+          successCount++;
+        } else {
+          failCount++;
+        }
+      } catch (error) {
+        failCount++;
+      }
+    }
+
+    if (successCount > 0) {
+      toast.success(`Successfully deleted ${successCount} faculty member(s)`);
+    }
+    if (failCount > 0) {
+      toast.error(`Failed to delete ${failCount} faculty member(s)`);
+    }
+
+    setSelectedFacultyIds(new Set());
+    loadDashboardData();
+  };
+
+  const toggleSelectAllFaculty = () => {
+    if (selectedFacultyIds.size === paginatedFaculty.length) {
+      setSelectedFacultyIds(new Set());
+    } else {
+      setSelectedFacultyIds(new Set(paginatedFaculty.map(f => f.id)));
+    }
+  };
+
+  const toggleSelectFaculty = (facultyId: string) => {
+    const newSelected = new Set(selectedFacultyIds);
+    if (newSelected.has(facultyId)) {
+      newSelected.delete(facultyId);
+    } else {
+      newSelected.add(facultyId);
+    }
+    setSelectedFacultyIds(newSelected);
+  };
+
+  const loadSettings = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("app_settings")
+        .select("setting_value")
+        .eq("setting_key", "registration_enabled")
+        .single();
+
+      if (error) throw error;
+      setRegistrationEnabled(data?.setting_value === "true");
+    } catch (error) {
+      console.error("Error loading settings:", error);
+    }
+  };
+
+  const toggleRegistration = async (enabled: boolean) => {
+    setLoadingSettings(true);
+    try {
+      const { error } = await supabase
+        .from("app_settings")
+        .update({ setting_value: enabled ? "true" : "false" })
+        .eq("setting_key", "registration_enabled");
+
+      if (error) throw error;
+      setRegistrationEnabled(enabled);
+      toast.success(`Student registration ${enabled ? "enabled" : "disabled"}`);
+    } catch (error: any) {
+      console.error("Error updating settings:", error);
+      toast.error("Failed to update settings");
+    } finally {
+      setLoadingSettings(false);
+    }
+  };
+
   const handleBulkImport = async () => {
     if (!confirm("This will import 3 students from the Excel file. Continue?")) {
       return;
@@ -489,6 +588,31 @@ export default function AdminDashboard() {
       </header>
 
       <main className="container mx-auto px-4 py-8">
+        {/* Registration Toggle Card */}
+        <Card className="p-4 mb-6 card-elegant">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <Settings className="h-5 w-5 text-primary" />
+              <div>
+                <h3 className="font-semibold">Student Registration</h3>
+                <p className="text-sm text-muted-foreground">
+                  Control whether students can register on the home page
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-3">
+              <span className="text-sm font-medium">
+                {registrationEnabled ? "Enabled" : "Disabled"}
+              </span>
+              <Switch
+                checked={registrationEnabled}
+                onCheckedChange={toggleRegistration}
+                disabled={loadingSettings}
+              />
+            </div>
+          </div>
+        </Card>
+
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-8">
           <Card 
@@ -716,18 +840,29 @@ export default function AdminDashboard() {
               </p>
             </div>
             
-            <div className="w-72">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Search by name, email, department..."
-                  value={searchQuery}
-                  onChange={(e) => {
-                    setSearchQuery(e.target.value);
-                    setCurrentPage(1);
-                  }}
-                  className="pl-10"
-                />
+            <div className="flex gap-2 items-center">
+              {selectedFacultyIds.size > 0 && (
+                <Button
+                  variant="destructive"
+                  onClick={handleBulkDeleteFaculty}
+                >
+                  <Trash className="h-4 w-4 mr-2" />
+                  Delete ({selectedFacultyIds.size})
+                </Button>
+              )}
+              <div className="w-72">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Search by name, email, department..."
+                    value={searchQuery}
+                    onChange={(e) => {
+                      setSearchQuery(e.target.value);
+                      setCurrentPage(1);
+                    }}
+                    className="pl-10"
+                  />
+                </div>
               </div>
             </div>
           </div>
@@ -736,6 +871,12 @@ export default function AdminDashboard() {
             <table className="w-full">
               <thead>
                 <tr className="border-b">
+                  <th className="text-left py-3 px-4">
+                    <Checkbox
+                      checked={selectedFacultyIds.size === paginatedFaculty.length && paginatedFaculty.length > 0}
+                      onCheckedChange={toggleSelectAllFaculty}
+                    />
+                  </th>
                   <th className="text-left py-3 px-4">Faculty</th>
                   <th className="text-left py-3 px-4">Overall Rating</th>
                   <th className="text-left py-3 px-4">Total Ratings</th>
@@ -748,6 +889,12 @@ export default function AdminDashboard() {
                 {paginatedFaculty.length > 0 ? (
                   paginatedFaculty.map((f) => (
                     <tr key={f.id} className="border-b hover:bg-muted/50 transition-colors">
+                      <td className="py-4 px-4">
+                        <Checkbox
+                          checked={selectedFacultyIds.has(f.id)}
+                          onCheckedChange={() => toggleSelectFaculty(f.id)}
+                        />
+                      </td>
                       <td className="py-4 px-4">
                         <div>
                           <p className="font-semibold">{f.name}</p>
@@ -822,7 +969,7 @@ export default function AdminDashboard() {
                   ))
                 ) : (
                   <tr>
-                    <td colSpan={6} className="py-8 text-center text-muted-foreground">
+                    <td colSpan={7} className="py-8 text-center text-muted-foreground">
                       No faculty found matching your criteria
                     </td>
                   </tr>

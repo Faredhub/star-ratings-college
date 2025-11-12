@@ -9,7 +9,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
 import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from "@/components/ui/pagination";
-import { Loader2, Send, MessageSquare, X, Filter, Trash2, Search, Edit } from "lucide-react";
+import { Loader2, Send, MessageSquare, X, Filter, Trash2, Search, Edit, Trash } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 import { EditStudentDialog } from "@/components/EditStudentDialog";
 
@@ -56,6 +57,7 @@ export function StudentsDialog({ open, onOpenChange }: { open: boolean; onOpenCh
   const [availableSemesters, setAvailableSemesters] = useState<number[]>([]);
   const [availableSections, setAvailableSections] = useState<string[]>([]);
   const [availableBranches, setAvailableBranches] = useState<string[]>([]);
+  const [selectedStudentIds, setSelectedStudentIds] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     if (open) {
@@ -254,6 +256,78 @@ export function StudentsDialog({ open, onOpenChange }: { open: boolean; onOpenCh
     setShowEditDialog(true);
   };
 
+  const handleBulkDelete = async () => {
+    if (selectedStudentIds.size === 0) {
+      toast.error("Please select students to delete");
+      return;
+    }
+
+    if (!confirm(`Are you sure you want to delete ${selectedStudentIds.size} student(s)? This will also delete all their ratings and messages.`)) {
+      return;
+    }
+
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      toast.error("Not authenticated");
+      return;
+    }
+
+    let successCount = 0;
+    let failCount = 0;
+
+    for (const studentId of selectedStudentIds) {
+      try {
+        const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/delete-student`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${session.access_token}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ studentId }),
+        });
+
+        if (response.ok) {
+          successCount++;
+        } else {
+          failCount++;
+        }
+      } catch (error) {
+        failCount++;
+      }
+    }
+
+    if (successCount > 0) {
+      toast.success(`Successfully deleted ${successCount} student(s)`);
+    }
+    if (failCount > 0) {
+      toast.error(`Failed to delete ${failCount} student(s)`);
+    }
+
+    setSelectedStudentIds(new Set());
+    loadStudents();
+    if (selectedStudent && selectedStudentIds.has(selectedStudent.id)) {
+      setSelectedStudent(null);
+    }
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedStudentIds.size === paginatedStudents.length) {
+      setSelectedStudentIds(new Set());
+    } else {
+      setSelectedStudentIds(new Set(paginatedStudents.map(s => s.id)));
+    }
+  };
+
+  const toggleSelectStudent = (studentId: string) => {
+    const newSelected = new Set(selectedStudentIds);
+    if (newSelected.has(studentId)) {
+      newSelected.delete(studentId);
+    } else {
+      newSelected.add(studentId);
+    }
+    setSelectedStudentIds(newSelected);
+  };
+
   // Pagination
   const totalPages = Math.ceil(filteredStudents.length / itemsPerPage);
   const paginatedStudents = filteredStudents.slice(
@@ -271,9 +345,9 @@ export function StudentsDialog({ open, onOpenChange }: { open: boolean; onOpenCh
         <div className="flex-1 overflow-hidden flex gap-4">
           {/* Students List */}
           <div className="flex-1 flex flex-col overflow-hidden">
-            {/* Search Bar */}
-            <div className="mb-4">
-              <div className="relative">
+            {/* Search Bar and Bulk Actions */}
+            <div className="mb-4 flex gap-2">
+              <div className="relative flex-1">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
                   placeholder="Search by name, registration number, or branch..."
@@ -282,6 +356,15 @@ export function StudentsDialog({ open, onOpenChange }: { open: boolean; onOpenCh
                   className="pl-10"
                 />
               </div>
+              {selectedStudentIds.size > 0 && (
+                <Button
+                  variant="destructive"
+                  onClick={handleBulkDelete}
+                >
+                  <Trash className="h-4 w-4 mr-2" />
+                  Delete ({selectedStudentIds.size})
+                </Button>
+              )}
             </div>
 
             {/* Filters */}
@@ -353,6 +436,12 @@ export function StudentsDialog({ open, onOpenChange }: { open: boolean; onOpenCh
                 <Table>
                   <TableHeader>
                     <TableRow>
+                      <TableHead className="w-12">
+                        <Checkbox
+                          checked={selectedStudentIds.size === paginatedStudents.length && paginatedStudents.length > 0}
+                          onCheckedChange={toggleSelectAll}
+                        />
+                      </TableHead>
                       <TableHead>Name</TableHead>
                       <TableHead>Email</TableHead>
                       <TableHead>Reg. No.</TableHead>
@@ -370,6 +459,12 @@ export function StudentsDialog({ open, onOpenChange }: { open: boolean; onOpenCh
                           key={student.id}
                           className={selectedStudent?.id === student.id ? "bg-muted" : ""}
                         >
+                          <TableCell>
+                            <Checkbox
+                              checked={selectedStudentIds.has(student.id)}
+                              onCheckedChange={() => toggleSelectStudent(student.id)}
+                            />
+                          </TableCell>
                           <TableCell className="font-medium">{student.full_name}</TableCell>
                           <TableCell className="text-sm">{student.email || 'N/A'}</TableCell>
                           <TableCell>{student.registration_number}</TableCell>
@@ -408,7 +503,7 @@ export function StudentsDialog({ open, onOpenChange }: { open: boolean; onOpenCh
                       ))
                     ) : (
                       <TableRow>
-                        <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
+                        <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
                           No students found matching your criteria
                         </TableCell>
                       </TableRow>

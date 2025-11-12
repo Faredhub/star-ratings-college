@@ -1,11 +1,35 @@
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { GraduationCap, Shield } from "lucide-react";
+import { GraduationCap, Shield, UserPlus } from "lucide-react";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import nalandaLogo from "@/assets/nalanda-logo.png";
+import { useEffect, useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
 
 const Index = () => {
   const navigate = useNavigate();
+  const [registrationEnabled, setRegistrationEnabled] = useState(true);
+
+  useEffect(() => {
+    loadSettings();
+  }, []);
+
+  const loadSettings = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("app_settings")
+        .select("setting_value")
+        .eq("setting_key", "registration_enabled")
+        .single();
+
+      if (error) throw error;
+      setRegistrationEnabled(data?.setting_value === "true");
+    } catch (error) {
+      console.error("Error loading settings:", error);
+      // Default to enabled if there's an error
+      setRegistrationEnabled(true);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-primary/10 via-background to-secondary/10 flex flex-col">
@@ -40,6 +64,17 @@ const Index = () => {
             <GraduationCap className="mr-2 h-5 w-5" />
             Student Login
           </Button>
+          {registrationEnabled && (
+            <Button
+              size="lg"
+              variant="secondary"
+              className="w-full sm:w-auto px-8"
+              onClick={() => navigate("/student-register")}
+            >
+              <UserPlus className="mr-2 h-5 w-5" />
+              Student Registration
+            </Button>
+          )}
           <Button
             size="lg"
             variant="outline"
