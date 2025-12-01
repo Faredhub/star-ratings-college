@@ -134,10 +134,10 @@ export default function AdminDashboard() {
 
       setAllAssignments(assignmentsData || []);
 
-      // Extract unique filter values
-      const semesters = [...new Set(assignmentsData?.map(a => a.semester.toString()) || [])];
-      const sections = [...new Set(assignmentsData?.map(a => a.section) || [])];
-      const subjects = [...new Set(assignmentsData?.map(a => a.subject) || [])];
+      // Extract unique filter values and remove empty strings
+      const semesters = [...new Set(assignmentsData?.map(a => a.semester.toString()).filter(s => s && s.trim() !== '') || [])];
+      const sections = [...new Set(assignmentsData?.map(a => a.section).filter(s => s && s.trim() !== '') || [])];
+      const subjects = [...new Set(assignmentsData?.map(a => a.subject).filter(s => s && s.trim() !== '') || [])];
       
       setAvailableSemesters(semesters.sort());
       setAvailableSections(sections.sort());
