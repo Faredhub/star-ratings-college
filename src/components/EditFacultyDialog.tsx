@@ -182,12 +182,14 @@ export function EditFacultyDialog({ open, onOpenChange, onSuccess, facultyId, fa
                 <SelectValue placeholder="Select branch" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="Computer Science">Computer Science</SelectItem>
-                <SelectItem value="Information Technology">Information Technology</SelectItem>
-                <SelectItem value="Electronics">Electronics</SelectItem>
-                <SelectItem value="Mechanical">Mechanical</SelectItem>
-                <SelectItem value="Civil">Civil</SelectItem>
-                <SelectItem value="Electrical">Electrical</SelectItem>
+                <SelectItem value="CSE">CSE</SelectItem>
+                <SelectItem value="CST">CST</SelectItem>
+                <SelectItem value="ME">ME</SelectItem>
+                <SelectItem value="EE">EE</SelectItem>
+                <SelectItem value="CE">CE</SelectItem>
+                <SelectItem value="MCA">MCA</SelectItem>
+                <SelectItem value="MBA">MBA</SelectItem>
+                <SelectItem value="BBA">BBA</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -233,10 +235,9 @@ export function EditFacultyDialog({ open, onOpenChange, onSuccess, facultyId, fa
                 <SelectValue placeholder="Select section" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="A">Section A</SelectItem>
-                <SelectItem value="B">Section B</SelectItem>
-                <SelectItem value="C">Section C</SelectItem>
-                <SelectItem value="D">Section D</SelectItem>
+                {["A", "B", "C", "D", "E", "F", "G", "H", "I", "J"].map((sec) => (
+                  <SelectItem key={sec} value={sec}>Section {sec}</SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>
