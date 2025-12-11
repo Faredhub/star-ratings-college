@@ -6,7 +6,7 @@ import { Card } from "@/components/ui/card";
 import { ArrowLeft, Star, Loader2, Users, BookOpen, TrendingUp, CalendarIcon } from "lucide-react";
 import { toast } from "sonner";
 import { ThemeToggle } from "@/components/ThemeToggle";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar, Legend } from "recharts";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar } from "recharts";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { format } from "date-fns";
@@ -90,23 +90,7 @@ export default function FacultyDetails() {
     }
   };
 
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    );
-  }
-
-  if (!faculty) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <p>Faculty not found</p>
-      </div>
-    );
-  }
-
-  // Filter ratings by date range
+  // Filter ratings by date range - must be before any conditional returns
   const filteredRatings = useMemo(() => {
     return ratings.filter(rating => {
       const ratingDate = new Date(rating.created_at);
@@ -161,6 +145,22 @@ export default function FacultyDetails() {
     { name: "Decorum", score: averageRatings.class_decorum },
     { name: "Teaching Aids", score: averageRatings.teaching_aids },
   ] : [];
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (!faculty) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <p>Faculty not found</p>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-primary/5 via-background to-secondary/5">
