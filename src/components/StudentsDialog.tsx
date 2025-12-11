@@ -145,11 +145,11 @@ export function StudentsDialog({ open, onOpenChange }: { open: boolean; onOpenCh
       setStudents(studentsData);
       setFilteredStudents(studentsData);
 
-      // Extract unique filter values
+      // Extract unique filter values and remove empty strings
       if (studentsData.length > 0) {
-        const semesters = [...new Set(studentsData.map(s => s.semester))].sort((a, b) => a - b);
-        const sections = [...new Set(studentsData.map(s => s.section))].sort();
-        const branches = [...new Set(studentsData.map(s => s.branch))].sort();
+        const semesters = [...new Set(studentsData.map(s => s.semester).filter(s => s != null))].sort((a, b) => a - b);
+        const sections = [...new Set(studentsData.map(s => s.section).filter(s => s && s.trim() !== ''))].sort();
+        const branches = [...new Set(studentsData.map(s => s.branch).filter(s => s && s.trim() !== ''))].sort();
         
         setAvailableSemesters(semesters);
         setAvailableSections(sections);
