@@ -233,17 +233,56 @@ export default function StudentDashboard() {
       const assignment = facultyAssignments.find(a => a.id === selectedAssignment);
       if (!assignment) throw new Error("Assignment not found");
 
-      const { error } = await supabase
+      // Check for existing rating
+      const { data: existingRating, error: checkError } = await supabase
         .from("ratings")
-        .upsert({
-          student_id: user.id,
-          faculty_id: assignment.faculty.id,
-          assignment_id: selectedAssignment,
-          ...ratings,
-          feedback_message: feedbackMessage
-        });
+        .select("id, created_at")
+        .eq("student_id", user.id)
+        .eq("assignment_id", selectedAssignment)
+        .maybeSingle();
 
-      if (error) throw error;
+      if (checkError) throw checkError;
+
+      if (existingRating) {
+        // Check if 5 minutes have passed since last submission
+        const lastSubmitTime = new Date(existingRating.created_at).getTime();
+        const now = Date.now();
+        const fiveMinutes = 5 * 60 * 1000;
+        const timeRemaining = fiveMinutes - (now - lastSubmitTime);
+
+        if (timeRemaining > 0) {
+          const minutesLeft = Math.ceil(timeRemaining / 60000);
+          const secondsLeft = Math.ceil((timeRemaining % 60000) / 1000);
+          toast.error(`Please wait ${minutesLeft > 0 ? `${minutesLeft}m ` : ''}${secondsLeft}s before resubmitting rating for this faculty`);
+          setSubmitting(false);
+          return;
+        }
+
+        // Update existing rating
+        const { error } = await supabase
+          .from("ratings")
+          .update({
+            ...ratings,
+            feedback_message: feedbackMessage,
+            created_at: new Date().toISOString()
+          })
+          .eq("id", existingRating.id);
+
+        if (error) throw error;
+      } else {
+        // Insert new rating
+        const { error } = await supabase
+          .from("ratings")
+          .insert({
+            student_id: user.id,
+            faculty_id: assignment.faculty.id,
+            assignment_id: selectedAssignment,
+            ...ratings,
+            feedback_message: feedbackMessage
+          });
+
+        if (error) throw error;
+      }
 
       toast.success("Feedback submitted successfully!");
       setFeedbackMessage("");
@@ -251,10 +290,7 @@ export default function StudentDashboard() {
       setRatings(defaultRatings);
       
       // Reload rating history
-      const { data: { user: currentUser } } = await supabase.auth.getUser();
-      if (currentUser) {
-        await loadRatingHistory(currentUser.id);
-      }
+      await loadRatingHistory(user.id);
     } catch (error: any) {
       console.error("Error submitting feedback:", error);
       toast.error(error.message || "Failed to submit feedback");
