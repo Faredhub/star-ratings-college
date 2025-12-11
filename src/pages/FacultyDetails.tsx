@@ -1,12 +1,16 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { ArrowLeft, Star, Loader2, Users, BookOpen, TrendingUp } from "lucide-react";
+import { ArrowLeft, Star, Loader2, Users, BookOpen, TrendingUp, CalendarIcon } from "lucide-react";
 import { toast } from "sonner";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar, Legend } from "recharts";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import { format } from "date-fns";
+import { cn } from "@/lib/utils";
 
 interface FacultyData {
   id: string;
@@ -41,6 +45,8 @@ export default function FacultyDetails() {
   const [faculty, setFaculty] = useState<FacultyData | null>(null);
   const [ratings, setRatings] = useState<RatingData[]>([]);
   const [assignments, setAssignments] = useState<any[]>([]);
+  const [startDate, setStartDate] = useState<Date | undefined>(undefined);
+  const [endDate, setEndDate] = useState<Date | undefined>(undefined);
 
   useEffect(() => {
     loadFacultyDetails();
@@ -100,15 +106,34 @@ export default function FacultyDetails() {
     );
   }
 
-  const averageRatings = ratings.length > 0 ? {
-    engagement_level: ratings.reduce((sum, r) => sum + r.engagement_level, 0) / ratings.length,
-    concept_understanding: ratings.reduce((sum, r) => sum + r.concept_understanding, 0) / ratings.length,
-    content_depth: ratings.reduce((sum, r) => sum + r.content_depth, 0) / ratings.length,
-    application_teaching: ratings.reduce((sum, r) => sum + r.application_teaching, 0) / ratings.length,
-    pedagogy_tools: ratings.reduce((sum, r) => sum + r.pedagogy_tools, 0) / ratings.length,
-    communication_skills: ratings.reduce((sum, r) => sum + r.communication_skills, 0) / ratings.length,
-    class_decorum: ratings.reduce((sum, r) => sum + r.class_decorum, 0) / ratings.length,
-    teaching_aids: ratings.reduce((sum, r) => sum + r.teaching_aids, 0) / ratings.length,
+  // Filter ratings by date range
+  const filteredRatings = useMemo(() => {
+    return ratings.filter(rating => {
+      const ratingDate = new Date(rating.created_at);
+      if (startDate && ratingDate < startDate) return false;
+      if (endDate) {
+        const endOfDay = new Date(endDate);
+        endOfDay.setHours(23, 59, 59, 999);
+        if (ratingDate > endOfDay) return false;
+      }
+      return true;
+    });
+  }, [ratings, startDate, endDate]);
+
+  const clearDateFilters = () => {
+    setStartDate(undefined);
+    setEndDate(undefined);
+  };
+
+  const averageRatings = filteredRatings.length > 0 ? {
+    engagement_level: filteredRatings.reduce((sum, r) => sum + r.engagement_level, 0) / filteredRatings.length,
+    concept_understanding: filteredRatings.reduce((sum, r) => sum + r.concept_understanding, 0) / filteredRatings.length,
+    content_depth: filteredRatings.reduce((sum, r) => sum + r.content_depth, 0) / filteredRatings.length,
+    application_teaching: filteredRatings.reduce((sum, r) => sum + r.application_teaching, 0) / filteredRatings.length,
+    pedagogy_tools: filteredRatings.reduce((sum, r) => sum + r.pedagogy_tools, 0) / filteredRatings.length,
+    communication_skills: filteredRatings.reduce((sum, r) => sum + r.communication_skills, 0) / filteredRatings.length,
+    class_decorum: filteredRatings.reduce((sum, r) => sum + r.class_decorum, 0) / filteredRatings.length,
+    teaching_aids: filteredRatings.reduce((sum, r) => sum + r.teaching_aids, 0) / filteredRatings.length,
   } : null;
 
   const overallRating = averageRatings 
@@ -157,6 +182,68 @@ export default function FacultyDetails() {
             <p className="text-muted-foreground">{faculty.designation} - {faculty.department}</p>
           </div>
 
+          {/* Date Filter */}
+          <Card className="p-4 card-elegant mb-6">
+            <div className="flex flex-wrap items-center gap-4">
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-medium">Filter by Date:</span>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className={cn(
+                        "w-[150px] justify-start text-left font-normal",
+                        !startDate && "text-muted-foreground"
+                      )}
+                    >
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {startDate ? format(startDate, "PP") : "Start Date"}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0">
+                    <Calendar
+                      mode="single"
+                      selected={startDate}
+                      onSelect={setStartDate}
+                      initialFocus
+                    />
+                  </PopoverContent>
+                </Popover>
+                <span className="text-muted-foreground">to</span>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className={cn(
+                        "w-[150px] justify-start text-left font-normal",
+                        !endDate && "text-muted-foreground"
+                      )}
+                    >
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {endDate ? format(endDate, "PP") : "End Date"}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0">
+                    <Calendar
+                      mode="single"
+                      selected={endDate}
+                      onSelect={setEndDate}
+                      initialFocus
+                    />
+                  </PopoverContent>
+                </Popover>
+              </div>
+              {(startDate || endDate) && (
+                <Button variant="ghost" size="sm" onClick={clearDateFilters}>
+                  Clear Filters
+                </Button>
+              )}
+              <span className="text-sm text-muted-foreground ml-auto">
+                Showing {filteredRatings.length} of {ratings.length} ratings
+              </span>
+            </div>
+          </Card>
+
           {/* Stats Cards */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
             <Card className="p-6 card-elegant">
@@ -176,7 +263,7 @@ export default function FacultyDetails() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-muted-foreground">Total Ratings</p>
-                  <p className="text-3xl font-bold">{ratings.length}</p>
+                  <p className="text-3xl font-bold">{filteredRatings.length}</p>
                   <p className="text-xs text-muted-foreground mt-1">Student evaluations</p>
                 </div>
                 <Users className="h-10 w-10 text-blue-500/20" />
@@ -258,11 +345,11 @@ export default function FacultyDetails() {
 
           {/* Recent Feedback */}
           <Card className="p-6 card-elegant">
-            <h3 className="text-lg font-semibold mb-4">Recent Student Feedback</h3>
-            <p className="text-sm text-muted-foreground mb-4">Latest comments and feedback from students</p>
-            {ratings.filter(r => r.feedback_message).length > 0 ? (
+            <h3 className="text-lg font-semibold mb-4">Student Feedback</h3>
+            <p className="text-sm text-muted-foreground mb-4">Comments and feedback from students{(startDate || endDate) ? " (filtered by date)" : ""}</p>
+            {filteredRatings.filter(r => r.feedback_message).length > 0 ? (
               <div className="space-y-4">
-                {ratings.filter(r => r.feedback_message).slice(0, 5).map((rating, idx) => (
+                {filteredRatings.filter(r => r.feedback_message).map((rating, idx) => (
                   <div key={idx} className="p-4 bg-muted/50 rounded-lg border-l-4 border-primary/20">
                     <div className="flex items-start justify-between mb-2">
                       <div className="flex flex-col">

@@ -7,10 +7,11 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { StarRating } from "@/components/StarRating";
-import { GraduationCap, LogOut, Loader2, Send, ArrowLeft, MessageCircle } from "lucide-react";
+import { GraduationCap, LogOut, Loader2, Send, ArrowLeft, MessageCircle, History, Star } from "lucide-react";
 import { toast } from "sonner";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 interface Profile {
   full_name: string;
@@ -39,6 +40,26 @@ interface Message {
   read_at: string | null;
 }
 
+interface RatingHistory {
+  id: string;
+  created_at: string;
+  engagement_level: number;
+  concept_understanding: number;
+  content_depth: number;
+  application_teaching: number;
+  pedagogy_tools: number;
+  communication_skills: number;
+  class_decorum: number;
+  teaching_aids: number;
+  feedback_message: string | null;
+  faculty: {
+    name: string;
+  };
+  faculty_assignments: {
+    subject: string;
+  };
+}
+
 export default function StudentDashboard() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
@@ -46,18 +67,20 @@ export default function StudentDashboard() {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [facultyAssignments, setFacultyAssignments] = useState<FacultyAssignment[]>([]);
   const [selectedAssignment, setSelectedAssignment] = useState("");
-  const [ratings, setRatings] = useState({
-    engagement_level: 3,
-    concept_understanding: 3,
-    content_depth: 3,
-    application_teaching: 3,
-    pedagogy_tools: 3,
-    communication_skills: 3,
-    class_decorum: 3,
-    teaching_aids: 3
-  });
+  const defaultRatings = {
+    engagement_level: 1,
+    concept_understanding: 1,
+    content_depth: 1,
+    application_teaching: 1,
+    pedagogy_tools: 1,
+    communication_skills: 1,
+    class_decorum: 1,
+    teaching_aids: 1
+  };
+  const [ratings, setRatings] = useState(defaultRatings);
   const [feedbackMessage, setFeedbackMessage] = useState("");
   const [messages, setMessages] = useState<Message[]>([]);
+  const [ratingHistory, setRatingHistory] = useState<RatingHistory[]>([]);
 
   useEffect(() => {
     loadData();
@@ -132,6 +155,9 @@ export default function StudentDashboard() {
       
       // Load messages
       await loadMessages(user.id);
+      
+      // Load rating history
+      await loadRatingHistory(user.id);
     } catch (error: any) {
       console.error("Error loading data:", error);
       toast.error("Failed to load data");
@@ -164,6 +190,35 @@ export default function StudentDashboard() {
     }
   };
 
+  const loadRatingHistory = async (userId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from("ratings")
+        .select(`
+          id,
+          created_at,
+          engagement_level,
+          concept_understanding,
+          content_depth,
+          application_teaching,
+          pedagogy_tools,
+          communication_skills,
+          class_decorum,
+          teaching_aids,
+          feedback_message,
+          faculty:faculty_id (name),
+          faculty_assignments:assignment_id (subject)
+        `)
+        .eq("student_id", userId)
+        .order("created_at", { ascending: false });
+
+      if (error) throw error;
+      setRatingHistory(data as any || []);
+    } catch (error: any) {
+      console.error("Error loading rating history:", error);
+    }
+  };
+
   const handleSubmit = async () => {
     if (!selectedAssignment) {
       toast.error("Please select a faculty member");
@@ -193,6 +248,13 @@ export default function StudentDashboard() {
       toast.success("Feedback submitted successfully!");
       setFeedbackMessage("");
       setSelectedAssignment("");
+      setRatings(defaultRatings);
+      
+      // Reload rating history
+      const { data: { user: currentUser } } = await supabase.auth.getUser();
+      if (currentUser) {
+        await loadRatingHistory(currentUser.id);
+      }
     } catch (error: any) {
       console.error("Error submitting feedback:", error);
       toast.error(error.message || "Failed to submit feedback");
@@ -374,6 +436,60 @@ export default function StudentDashboard() {
                 </>
               )}
             </div>
+          </Card>
+
+          {/* Rating History */}
+          <Card className="p-6 card-elegant">
+            <h2 className="text-2xl font-bold mb-2 gradient-text flex items-center gap-2">
+              <History className="h-6 w-6" />
+              Rating History
+            </h2>
+            <p className="text-muted-foreground mb-4">Your previously submitted ratings</p>
+            {ratingHistory.length > 0 ? (
+              <ScrollArea className="h-[400px] pr-4">
+                <div className="space-y-4">
+                  {ratingHistory.map((rating) => {
+                    const avgRating = (
+                      rating.engagement_level +
+                      rating.concept_understanding +
+                      rating.content_depth +
+                      rating.application_teaching +
+                      rating.pedagogy_tools +
+                      rating.communication_skills +
+                      rating.class_decorum +
+                      rating.teaching_aids
+                    ) / 8;
+                    
+                    return (
+                      <div key={rating.id} className="p-4 bg-muted/50 rounded-lg border">
+                        <div className="flex justify-between items-start mb-2">
+                          <div>
+                            <p className="font-semibold">{rating.faculty?.name}</p>
+                            <p className="text-sm text-muted-foreground">{rating.faculty_assignments?.subject}</p>
+                          </div>
+                          <div className="text-right">
+                            <div className="flex items-center gap-1">
+                              <Star className="h-4 w-4 text-yellow-500 fill-yellow-500" />
+                              <span className="font-semibold">{avgRating.toFixed(1)}/5</span>
+                            </div>
+                            <p className="text-xs text-muted-foreground">
+                              {new Date(rating.created_at).toLocaleDateString()}
+                            </p>
+                          </div>
+                        </div>
+                        {rating.feedback_message && (
+                          <p className="text-sm text-muted-foreground mt-2 italic">
+                            "{rating.feedback_message}"
+                          </p>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </ScrollArea>
+            ) : (
+              <p className="text-center text-muted-foreground py-8">No ratings submitted yet</p>
+            )}
           </Card>
 
           {/* Messages from Admin */}
