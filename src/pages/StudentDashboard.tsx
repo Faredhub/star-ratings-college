@@ -398,7 +398,7 @@ export default function StudentDashboard() {
                 <>
                   <div className="grid md:grid-cols-2 gap-6">
                     <StarRating
-                      label="Course Content Delivery
+                      label="Course Content Delivery.
 
 
 
