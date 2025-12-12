@@ -398,37 +398,44 @@ export default function StudentDashboard() {
                 <>
                   <div className="grid md:grid-cols-2 gap-6">
                     <StarRating
-                      label="Engagement Level"
+                      label="Course Content Delivery
+
+
+
+"
                       description="How well does the faculty engage students?"
                       value={ratings.engagement_level}
                       onChange={(value) => setRatings({ ...ratings, engagement_level: value })}
                     />
                     <StarRating
-                      label="Concept Understanding"
+                      label="
+Use of Innovative Teaching Methods (ICT, Labs, Case Studies)e"
                       description="Clarity in explaining concepts"
                       value={ratings.concept_understanding}
                       onChange={(value) => setRatings({ ...ratings, concept_understanding: value })}
                     />
                     <StarRating
-                      label="Content Spread & Depth"
+                      label="Syllabus Completion on Time"
                       description="Coverage and depth of subject matter"
                       value={ratings.content_depth}
                       onChange={(value) => setRatings({ ...ratings, content_depth: value })}
                     />
                     <StarRating
-                      label="Application-Oriented Teaching"
+                      label="Mentoring and Counseling of Students"
                       description="Real-world application focus"
                       value={ratings.application_teaching}
                       onChange={(value) => setRatings({ ...ratings, application_teaching: value })}
                     />
                     <StarRating
-                      label="Pedagogy Techniques & Tools"
+                      label="
+Classroom Engagement & Interaction"
                       description="Teaching methods and tools used"
                       value={ratings.pedagogy_tools}
                       onChange={(value) => setRatings({ ...ratings, pedagogy_tools: value })}
                     />
                     <StarRating
-                      label="Communication Skills"
+                      label="
+Subject Knowledge & Expertise"
                       description="Clarity and effectiveness of communication"
                       value={ratings.communication_skills}
                       onChange={(value) => setRatings({ ...ratings, communication_skills: value })}
@@ -440,7 +447,7 @@ export default function StudentDashboard() {
                       onChange={(value) => setRatings({ ...ratings, class_decorum: value })}
                     />
                     <StarRating
-                      label="Teaching Aids"
+                      label="Punctuality & Regularity"
                       description="Use of visual aids and technology"
                       value={ratings.teaching_aids}
                       onChange={(value) => setRatings({ ...ratings, teaching_aids: value })}
@@ -448,7 +455,7 @@ export default function StudentDashboard() {
                   </div>
 
                   <div className="space-y-2">
-                    <Label>Additional Feedback (Optional)</Label>
+                    <Label>Additional Feedback (Mandatory)</Label>
                     <Textarea
                       placeholder="Share any specific comments or suggestions for improvement..."
                       value={feedbackMessage}
