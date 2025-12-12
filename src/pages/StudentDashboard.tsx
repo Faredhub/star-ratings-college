@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { StarRating } from "@/components/StarRating";
-import { GraduationCap, LogOut, Loader2, Send, ArrowLeft, MessageCircle, History, Star } from "lucide-react";
+import { GraduationCap, LogOut, Loader2, Send, ArrowLeft, MessageCircle, History, Star, Home } from "lucide-react";
 import { toast } from "sonner";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -363,6 +363,16 @@ export default function StudentDashboard() {
                 <p className="text-sm text-muted-foreground">Section</p>
                 <p className="font-semibold">Section {profile?.section}</p>
               </div>
+            </div>
+            <div className="mt-4 pt-4 border-t">
+              <Button 
+                onClick={() => navigate("/hostel-feedback")} 
+                variant="outline"
+                className="w-full md:w-auto"
+              >
+                <Home className="mr-2 h-4 w-4" />
+                Hostel Feedback
+              </Button>
             </div>
           </Card>
 

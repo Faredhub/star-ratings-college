@@ -109,6 +109,60 @@ export type Database = {
           },
         ]
       }
+      hostel_ratings: {
+        Row: {
+          accommodation_rooms: number
+          created_at: string
+          discipline_rules: number
+          feedback_message: string | null
+          hostel_staff_behaviour: number
+          id: string
+          maintenance_facilities: number
+          medical_facilities: number
+          mess_food_quality: number
+          overall_living_experience: number
+          safety_security: number
+          student_id: string
+          updated_at: string
+          washrooms_hygiene: number
+          wifi_connectivity: number
+        }
+        Insert: {
+          accommodation_rooms: number
+          created_at?: string
+          discipline_rules: number
+          feedback_message?: string | null
+          hostel_staff_behaviour: number
+          id?: string
+          maintenance_facilities: number
+          medical_facilities: number
+          mess_food_quality: number
+          overall_living_experience: number
+          safety_security: number
+          student_id: string
+          updated_at?: string
+          washrooms_hygiene: number
+          wifi_connectivity: number
+        }
+        Update: {
+          accommodation_rooms?: number
+          created_at?: string
+          discipline_rules?: number
+          feedback_message?: string | null
+          hostel_staff_behaviour?: number
+          id?: string
+          maintenance_facilities?: number
+          medical_facilities?: number
+          mess_food_quality?: number
+          overall_living_experience?: number
+          safety_security?: number
+          student_id?: string
+          updated_at?: string
+          washrooms_hygiene?: number
+          wifi_connectivity?: number
+        }
+        Relationships: []
+      }
       messages: {
         Row: {
           admin_id: string
