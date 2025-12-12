@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Shield, LogOut, Loader2, Users, BookOpen, Star, TrendingUp, Eye, Download, Mail, ArrowLeft, Plus, Filter, Trash2, Edit, BarChart3, PieChart as PieChartIcon, LineChart as LineChartIcon, UserPlus, FileSpreadsheet, Search, Upload, Trash, Settings } from "lucide-react";
+import { Shield, LogOut, Loader2, Users, BookOpen, Star, TrendingUp, Eye, Download, Mail, ArrowLeft, Plus, Filter, Trash2, Edit, BarChart3, PieChart as PieChartIcon, LineChart as LineChartIcon, UserPlus, FileSpreadsheet, Search, Upload, Trash, Settings, Home } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
@@ -610,6 +610,25 @@ export default function AdminDashboard() {
                 disabled={loadingSettings}
               />
             </div>
+          </div>
+        </Card>
+
+        {/* Hostel Ratings Button */}
+        <Card className="p-4 mb-6 card-elegant">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <Home className="h-5 w-5 text-primary" />
+              <div>
+                <h3 className="font-semibold">Hostel Ratings</h3>
+                <p className="text-sm text-muted-foreground">
+                  View hostel feedback from students
+                </p>
+              </div>
+            </div>
+            <Button onClick={() => navigate("/admin/hostel-ratings")} variant="outline">
+              <Eye className="mr-2 h-4 w-4" />
+              View Hostel Ratings
+            </Button>
           </div>
         </Card>
 
