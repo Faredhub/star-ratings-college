@@ -179,6 +179,7 @@ export function EditStudentDialog({ open, onOpenChange, student, onSuccess }: Ed
                   <SelectItem value="MCA">MCA</SelectItem>
                   <SelectItem value="MBA">MBA</SelectItem>
                   <SelectItem value="BBA">BBA</SelectItem>
+                  <SelectItem value="BCA">BCA</SelectItem>
                 </SelectContent>
               </Select>
             </div>

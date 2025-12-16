@@ -1,14 +1,18 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { ArrowLeft, Loader2, Users, UserX, Star, MessageSquare } from "lucide-react";
+import { ArrowLeft, Loader2, Users, UserX, Star, MessageSquare, CalendarIcon, X } from "lucide-react";
 import { toast } from "sonner";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import { cn } from "@/lib/utils";
+import { format } from "date-fns";
 
 interface HostelRatingWithStudent {
   id: string;
@@ -42,7 +46,8 @@ export default function HostelRatings() {
   const [loading, setLoading] = useState(true);
   const [ratings, setRatings] = useState<HostelRatingWithStudent[]>([]);
   const [studentsWithoutRatings, setStudentsWithoutRatings] = useState<StudentWithoutRating[]>([]);
-  const [averageRatings, setAverageRatings] = useState<Record<string, number>>({});
+  const [startDate, setStartDate] = useState<Date | undefined>(undefined);
+  const [endDate, setEndDate] = useState<Date | undefined>(undefined);
 
   useEffect(() => {
     checkAdminAndLoadData();
@@ -107,47 +112,68 @@ export default function HostelRatings() {
       const ratedStudentIds = new Set(ratingsData?.map(r => r.student_id) || []);
       const withoutRatings = (studentsData || []).filter(s => !ratedStudentIds.has(s.id));
       setStudentsWithoutRatings(withoutRatings);
-
-      // Calculate average ratings
-      if (ratingsData && ratingsData.length > 0) {
-        const avgRatings: Record<string, number> = {
-          accommodation_rooms: 0,
-          washrooms_hygiene: 0,
-          mess_food_quality: 0,
-          safety_security: 0,
-          hostel_staff_behaviour: 0,
-          maintenance_facilities: 0,
-          wifi_connectivity: 0,
-          discipline_rules: 0,
-          medical_facilities: 0,
-          overall_living_experience: 0,
-        };
-
-        ratingsData.forEach(r => {
-          avgRatings.accommodation_rooms += r.accommodation_rooms;
-          avgRatings.washrooms_hygiene += r.washrooms_hygiene;
-          avgRatings.mess_food_quality += r.mess_food_quality;
-          avgRatings.safety_security += r.safety_security;
-          avgRatings.hostel_staff_behaviour += r.hostel_staff_behaviour;
-          avgRatings.maintenance_facilities += r.maintenance_facilities;
-          avgRatings.wifi_connectivity += r.wifi_connectivity;
-          avgRatings.discipline_rules += r.discipline_rules;
-          avgRatings.medical_facilities += r.medical_facilities;
-          avgRatings.overall_living_experience += r.overall_living_experience;
-        });
-
-        Object.keys(avgRatings).forEach(key => {
-          avgRatings[key] = avgRatings[key] / ratingsData.length;
-        });
-
-        setAverageRatings(avgRatings);
-      }
     } catch (error: any) {
       console.error("Error loading data:", error);
       toast.error("Failed to load hostel ratings data");
     } finally {
       setLoading(false);
     }
+  };
+
+  // Filter ratings by date range
+  const filteredRatings = useMemo(() => {
+    return ratings.filter(rating => {
+      const ratingDate = new Date(rating.created_at);
+      if (startDate && ratingDate < startDate) return false;
+      if (endDate) {
+        const endOfDay = new Date(endDate);
+        endOfDay.setHours(23, 59, 59, 999);
+        if (ratingDate > endOfDay) return false;
+      }
+      return true;
+    });
+  }, [ratings, startDate, endDate]);
+
+  // Calculate average ratings based on filtered data
+  const averageRatings = useMemo(() => {
+    if (filteredRatings.length === 0) return {};
+    
+    const avgRatings: Record<string, number> = {
+      accommodation_rooms: 0,
+      washrooms_hygiene: 0,
+      mess_food_quality: 0,
+      safety_security: 0,
+      hostel_staff_behaviour: 0,
+      maintenance_facilities: 0,
+      wifi_connectivity: 0,
+      discipline_rules: 0,
+      medical_facilities: 0,
+      overall_living_experience: 0,
+    };
+
+    filteredRatings.forEach(r => {
+      avgRatings.accommodation_rooms += r.accommodation_rooms;
+      avgRatings.washrooms_hygiene += r.washrooms_hygiene;
+      avgRatings.mess_food_quality += r.mess_food_quality;
+      avgRatings.safety_security += r.safety_security;
+      avgRatings.hostel_staff_behaviour += r.hostel_staff_behaviour;
+      avgRatings.maintenance_facilities += r.maintenance_facilities;
+      avgRatings.wifi_connectivity += r.wifi_connectivity;
+      avgRatings.discipline_rules += r.discipline_rules;
+      avgRatings.medical_facilities += r.medical_facilities;
+      avgRatings.overall_living_experience += r.overall_living_experience;
+    });
+
+    Object.keys(avgRatings).forEach(key => {
+      avgRatings[key] = avgRatings[key] / filteredRatings.length;
+    });
+
+    return avgRatings;
+  }, [filteredRatings]);
+
+  const clearFilters = () => {
+    setStartDate(undefined);
+    setEndDate(undefined);
   };
 
   const criteriaLabels: Record<string, string> = {
@@ -194,6 +220,44 @@ export default function HostelRatings() {
 
       <main className="container mx-auto px-4 py-8">
         <div className="space-y-6">
+          {/* Date Filter */}
+          <Card className="p-4">
+            <div className="flex flex-wrap items-center gap-4">
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-medium">Filter by Date:</span>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" className={cn("w-[180px] justify-start text-left font-normal", !startDate && "text-muted-foreground")}>
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {startDate ? format(startDate, "PPP") : "Start date"}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar mode="single" selected={startDate} onSelect={setStartDate} initialFocus className="pointer-events-auto" />
+                  </PopoverContent>
+                </Popover>
+                <span className="text-muted-foreground">to</span>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" className={cn("w-[180px] justify-start text-left font-normal", !endDate && "text-muted-foreground")}>
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {endDate ? format(endDate, "PPP") : "End date"}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar mode="single" selected={endDate} onSelect={setEndDate} initialFocus className="pointer-events-auto" />
+                  </PopoverContent>
+                </Popover>
+              </div>
+              {(startDate || endDate) && (
+                <Button variant="ghost" size="sm" onClick={clearFilters}>
+                  <X className="h-4 w-4 mr-1" />
+                  Clear Filter
+                </Button>
+              )}
+            </div>
+          </Card>
+
           {/* Stats Cards */}
           <div className="grid md:grid-cols-3 gap-4">
             <Card className="p-4">
@@ -201,7 +265,7 @@ export default function HostelRatings() {
                 <Users className="h-8 w-8 text-primary" />
                 <div>
                   <p className="text-sm text-muted-foreground">Students Rated</p>
-                  <p className="text-2xl font-bold">{ratings.length}</p>
+                  <p className="text-2xl font-bold">{filteredRatings.length}</p>
                 </div>
               </div>
             </Card>
@@ -249,7 +313,7 @@ export default function HostelRatings() {
             <TabsList>
               <TabsTrigger value="ratings">
                 <Users className="h-4 w-4 mr-2" />
-                Students Who Rated ({ratings.length})
+                Students Who Rated ({filteredRatings.length})
               </TabsTrigger>
               <TabsTrigger value="not-rated">
                 <UserX className="h-4 w-4 mr-2" />
@@ -282,7 +346,7 @@ export default function HostelRatings() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {ratings.map((rating) => (
+                      {filteredRatings.map((rating) => (
                         <TableRow key={rating.id}>
                           <TableCell className="font-medium">{rating.student_name}</TableCell>
                           <TableCell>{rating.registration_number}</TableCell>
@@ -298,7 +362,7 @@ export default function HostelRatings() {
                           <TableCell className="font-bold">{rating.overall_living_experience}</TableCell>
                         </TableRow>
                       ))}
-                      {ratings.length === 0 && (
+                      {filteredRatings.length === 0 && (
                         <TableRow>
                           <TableCell colSpan={12} className="text-center text-muted-foreground">
                             No hostel ratings submitted yet
@@ -349,7 +413,7 @@ export default function HostelRatings() {
               <Card className="p-4">
                 <ScrollArea className="h-[500px]">
                   <div className="space-y-4">
-                    {ratings
+                    {filteredRatings
                       .filter(r => r.feedback_message)
                       .map((rating) => (
                         <Card key={rating.id} className="p-4 bg-muted/30">
@@ -369,7 +433,7 @@ export default function HostelRatings() {
                           </p>
                         </Card>
                       ))}
-                    {ratings.filter(r => r.feedback_message).length === 0 && (
+                    {filteredRatings.filter(r => r.feedback_message).length === 0 && (
                       <div className="text-center text-muted-foreground py-8">
                         No feedback messages submitted yet
                       </div>
