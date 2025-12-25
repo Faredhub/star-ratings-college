@@ -111,8 +111,8 @@ export default function AdminDashboard() {
         return;
       }
 
-      // Check if super admin (bpskar2@gmail.com)
-      setIsSuperAdmin(user.email === "bpskar2@gmail.com");
+      // Check if super admin
+      setIsSuperAdmin(user.email === "onlinekracker03@gmail.com" || user.email === "flagshipbot@gmail.com");
     } catch (error) {
       navigate("/admin-login");
     }

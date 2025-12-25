@@ -13,6 +13,7 @@ import FacultyDetails from "./pages/FacultyDetails";
 import SendEmail from "./pages/SendEmail";
 import HostelFeedback from "./pages/HostelFeedback";
 import HostelRatings from "./pages/HostelRatings";
+import SetupAdmin from "./pages/SetupAdmin";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -34,6 +35,7 @@ const App = () => (
           <Route path="/admin/faculty/:facultyId" element={<FacultyDetails />} />
           <Route path="/admin/faculty/:facultyId/send-email" element={<SendEmail />} />
           <Route path="/admin/hostel-ratings" element={<HostelRatings />} />
+          <Route path="/admin/setup-admin" element={<SetupAdmin />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
