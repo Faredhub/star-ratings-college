@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Shield, LogOut, Loader2, Users, BookOpen, Star, TrendingUp, Eye, Download, Mail, ArrowLeft, Plus, Filter, Trash2, Edit, BarChart3, PieChart as PieChartIcon, LineChart as LineChartIcon, UserPlus, FileSpreadsheet, Search, Upload, Trash, Settings, Home } from "lucide-react";
+import { Shield, LogOut, Loader2, Users, BookOpen, Star, TrendingUp, Eye, Download, Mail, ArrowLeft, Plus, Filter, Trash2, Edit, BarChart3, PieChart as PieChartIcon, LineChart as LineChartIcon, UserPlus, FileSpreadsheet, Search, Upload, Trash, Settings, Home, AlertTriangle } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
@@ -292,6 +292,104 @@ export default function AdminDashboard() {
     }
   };
 
+  const handleExportLowRatingsExcel = async () => {
+    try {
+      // Filter faculty with ratings below 4.0 (only those who have ratings)
+      const lowRatedFaculty = faculty.filter(f => f.ratingCount > 0 && f.averageRating < 4.0);
+
+      if (lowRatedFaculty.length === 0) {
+        toast.info("No faculty with ratings below 4.0 found");
+        return;
+      }
+
+      // Fetch all ratings for low-rated faculty with student info
+      const { data: ratingsData, error: ratingsError } = await supabase
+        .from("ratings")
+        .select("*, profiles(full_name, registration_number, semester, section, branch)")
+        .in("faculty_id", lowRatedFaculty.map(f => f.id));
+
+      if (ratingsError) throw ratingsError;
+
+      // Fetch assignments for these faculty
+      const { data: assignmentsData, error: assignmentsError } = await supabase
+        .from("faculty_assignments")
+        .select("*")
+        .in("faculty_id", lowRatedFaculty.map(f => f.id));
+
+      if (assignmentsError) throw assignmentsError;
+
+      // Prepare faculty summary sheet
+      const facultySummary = lowRatedFaculty.map(f => {
+        const facultyAssignments = assignmentsData?.filter(a => a.faculty_id === f.id) || [];
+        const assignmentDetails = facultyAssignments.map(a => 
+          `${a.subject} (Sem ${a.semester}, Sec ${a.section}, ${a.branch})`
+        ).join("; ");
+
+        return {
+          "Faculty Name": f.name,
+          "Email": f.email,
+          "Department": f.department,
+          "Designation": f.designation || "N/A",
+          "Average Rating": f.averageRating.toFixed(2),
+          "Total Ratings": f.ratingCount,
+          "Total Assignments": f.assignmentCount,
+          "Assignments Details": assignmentDetails || "N/A",
+          "Status": f.averageRating >= 3 ? "Needs Improvement" : "Critical"
+        };
+      });
+
+      // Prepare detailed ratings sheet
+      const detailedRatings = ratingsData?.map(r => {
+        const facultyMember = lowRatedFaculty.find(f => f.id === r.faculty_id);
+        const avgRating = (
+          r.engagement_level +
+          r.concept_understanding +
+          r.content_depth +
+          r.application_teaching +
+          r.pedagogy_tools +
+          r.communication_skills +
+          r.class_decorum +
+          r.teaching_aids
+        ) / 8;
+
+        return {
+          "Faculty Name": facultyMember?.name || "N/A",
+          "Faculty Email": facultyMember?.email || "N/A",
+          "Student Name": r.profiles?.full_name || "N/A",
+          "Registration Number": r.profiles?.registration_number || "N/A",
+          "Student Semester": r.profiles?.semester || "N/A",
+          "Student Section": r.profiles?.section || "N/A",
+          "Student Branch": r.profiles?.branch || "N/A",
+          "Engagement Level": r.engagement_level,
+          "Concept Understanding": r.concept_understanding,
+          "Content Depth": r.content_depth,
+          "Application Teaching": r.application_teaching,
+          "Pedagogy Tools": r.pedagogy_tools,
+          "Communication Skills": r.communication_skills,
+          "Class Decorum": r.class_decorum,
+          "Teaching Aids": r.teaching_aids,
+          "Overall Rating": avgRating.toFixed(2),
+          "Feedback/Comments": r.feedback_message || "No comments",
+          "Rating Date": new Date(r.created_at).toLocaleDateString()
+        };
+      }) || [];
+
+      // Create workbook
+      const wb = XLSX.utils.book_new();
+      const ws1 = XLSX.utils.json_to_sheet(facultySummary);
+      const ws2 = XLSX.utils.json_to_sheet(detailedRatings);
+      
+      XLSX.utils.book_append_sheet(wb, ws1, "Faculty Summary (Below 4.0)");
+      XLSX.utils.book_append_sheet(wb, ws2, "Detailed Ratings");
+      
+      XLSX.writeFile(wb, "low-ratings-faculty-report.xlsx");
+      toast.success(`Exported ${lowRatedFaculty.length} faculty with ratings below 4.0`);
+    } catch (error: any) {
+      console.error("Error exporting low ratings Excel:", error);
+      toast.error("Failed to export low ratings report");
+    }
+  };
+
   const handleSendEmail = async (facultyMember: FacultyWithRatings) => {
     navigate(`/admin/faculty/${facultyMember.id}/send-email`);
   };
@@ -570,6 +668,10 @@ export default function AdminDashboard() {
                   <Button onClick={handleExportExcel} variant="outline">
                     <FileSpreadsheet className="mr-2 h-4 w-4" />
                     Export Excel
+                  </Button>
+                  <Button onClick={handleExportLowRatingsExcel} variant="outline" className="border-orange-500 text-orange-600 hover:bg-orange-50 dark:hover:bg-orange-950">
+                    <AlertTriangle className="mr-2 h-4 w-4" />
+                    Low Ratings (&lt;4.0)
                   </Button>
                   <Button onClick={handleExportPDF} variant="outline">
                     <Download className="mr-2 h-4 w-4" />
